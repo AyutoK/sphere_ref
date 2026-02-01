@@ -1,8 +1,7 @@
 /nc_underground/
 /output/
 /output_refl/
-
-
-
-
-
+/__pycache__/
+*.pyc
+*.pyo
+*.pyd
