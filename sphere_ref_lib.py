@@ -122,7 +122,7 @@ def abs_check_r2(R2, p2s):
 # 光線の図示と角度分布
 # ----------------------------------------
 
-def plot_rays_hist_2d(R, xs, d, Z0, R2s, fp):
+def plot_rays_hist_2d(R2s, xs, d, Z0, p0s, p2s, p_hits, ref_dirs, fp, R=1.0):
     # ------------------------------------------------------
     # 描画の準備
     # ------------------------------------------------------
@@ -462,8 +462,32 @@ def get_default_param(target):
 # III.探査機と垂直方向に補正(cosθで割る) --> ve_da
 
 # 各補正について行うかのフラグを受け取り、最終的な分布を作成
-def steve_correction(*args):
-    cor_ons = args[0]  # 補正を行うかどうかのフラグのリスト [立体角補正, 反射率補正, 垂直補正]
+
+# copilotくんに相談して改良版を作成してもらった>>steve_correction_pipeline()
+
+def steve_correction(target, R2, fp_nc, theta_arr_r2, phi_arr_r2, p0s, p2s, p_hits, ref_dirs, amp_arr, alp_arr ,heat_da, *args):
+    n_cor = len(args)
+
+    if args[0] == 1:
+        ste_da = i_the_solid_angle(heat_da)
+    else:
+        ste_da = heat_da
+
+    if args[1] == 1:
+        ste_da_ref = ii_the_reflection_rate(target, R2, ste_da, fp_nc, apply_ref="average")
+    else:
+        ste_da_ref = ste_da
+
+    if args[2] == 1:
+        ve_da = iii_the_vertical_direction(p2s, ref_dirs, theta_arr_r2, ste_da_ref)
+    else:
+        ve_da = ste_da_ref
+
+
+
+    fin_da = ve_da
+
+    return fin_da
 
 # ----------------------------------------
 # I.立体角補正
@@ -519,7 +543,7 @@ def load_nc_alpha_ts(fp_nc):
     return dth_da
 
 # II.を行う
-def ii_the_reflection_rate(R2, ste_da, fp_nc):
+def ii_the_reflection_rate(target, R2, ste_da, fp_nc, apply_ref="average"):
 
     att_da = load_nc_alpha_ts(fp_nc)
 
@@ -527,8 +551,6 @@ def ii_the_reflection_rate(R2, ste_da, fp_nc):
         inc_angle = att_da.sel(H=R2, method="nearest")
     else:
         inc_angle = ste_da["theta"]/2 # 無限遠では入射角 ≒ 探査機角度 / 2
-
-    target = "ganymede" # "moon" or "ganymede"
 
     e0 = 1.0
     e1, e2, H_obs, D_moon, R_moon, e1, e2, tandelta = get_default_param(target)
@@ -558,8 +580,6 @@ def ii_the_reflection_rate(R2, ste_da, fp_nc):
     Rtm_da = xr.DataArray(Rtm, coords={"theta": ste_da["theta"]}, dims=("theta",))
     #Rtm_da = Rtm_da.where(Rtm_da <= 1, 0) # 反射率1以上を0でマスク(予期しない挙動防止)
 
-    apply_ref = "TM" # "average" or "TE" or "TM"
-
     if apply_ref == "average":
         use_ref_da = Rave_da
     elif apply_ref == "TE":
@@ -570,6 +590,173 @@ def ii_the_reflection_rate(R2, ste_da, fp_nc):
         raise ValueError("Invalid apply_ref value. Choose from 'average', 'TE', or 'TM'.")
 
     # xarray.DataArray には .abs() は無いので、Python の abs()（= DataArray.__abs__）を使う
-    ste_da_ref = (ste_da * abs(use_ref_da)).rename("counts per sinθ with reflection rate")
+    ste_da_ref = (ste_da * abs(use_ref_da)).rename(f"counts per sinθ with reflection rate")
 
     return ste_da_ref
+
+# ----------------------------------------
+# III.探査機と垂直方向に補正
+# ----------------------------------------
+
+def iii_the_vertical_direction(p2s, ref_dirs, theta_arr_r2, ste_da_ref):
+    p2s_norm = np.array(np.linalg.norm(p2s, axis=1))
+    p2s_norm_true = np.full(len(p2s), p2s_norm[0])
+    ths = 1e-6
+    costh = np.empty(len(p2s))
+
+    if np.all(p2s_norm - p2s_norm_true < ths):
+        p2s_normed = np.array([p2s[x]/p2s_norm[0] for x in range(len(p2s))])
+        print("p2sが正常に単位ベクトル化できました")
+        for x in range(len(p2s)):
+            costh[x] = np.dot(p2s_normed[x], ref_dirs[x])
+    else:
+        print("p2sの距離が一定ではありません")
+
+    ve_da = ste_da_ref.copy()
+
+    axis_theta = []
+    # 配列同士の範囲判定は「比較の連鎖」にならないように、括弧 + &（または np.logical_and）で書く
+    # histのbinの範囲内にいるデータ間の平均でbinを代表させる
+    for i in range(len(ve_da["theta"].values)):
+        m_min = ve_da["theta"].values[i] - 0.5
+        m_max = ve_da["theta"].values[i] + 0.5
+
+        mask = np.logical_and((theta_arr_r2 < m_max),(theta_arr_r2 >= m_min))
+        if np.any(mask) == False:
+            ave_cos = np.nan
+        else:
+            ave_cos = np.average(costh[mask])
+
+        axis_theta.append(ave_cos)
+
+    axis_theta = np.array(axis_theta)
+
+    axt_da = xr.DataArray(axis_theta, coords={"theta": ve_da["theta"]}, dims=("theta",))
+    axt_da.name = "cos"
+
+    ve_da = ve_da / axt_da
+
+    ve_da.fillna(0)
+
+    return ve_da
+
+# ----------------------------------------
+# パイプライン方式の補正関数（拡張性向上版）
+# ----------------------------------------
+
+def steve_correction_pipeline(heat_da, params, corrections):
+    """
+    補正関数をパイプライン形式で適用（拡張性向上版）
+    
+    新しい補正を追加する場合：
+    1. 新しい補正関数を定義（統一インターフェース：func(data_da, params, **kwargs)）
+    2. correction_functionsに登録
+    3. この関数の変更は不要！
+    
+    Parameters
+    ----------
+    heat_da : xr.DataArray
+        入力データ
+    params : dict
+        全補正関数で共有される共通パラメータ
+        必須キー: target, R2, fp_nc, theta_arr_r2, phi_arr_r2, 
+                 p0s, p2s, p_hits, ref_dirs, amp_arr, alp_arr
+    corrections : list of tuple
+        適用する補正のリスト。各要素は (補正名, パラメータ辞書) のタプル
+        例: [("solid_angle", {}), 
+             ("reflection_rate", {"apply_ref": "average"}),
+             ("vertical_direction", {})]
+    
+    Returns
+    -------
+    result_da : xr.DataArray
+        補正後のデータ
+    
+    Examples
+    --------
+    >>> params = {
+    ...     "target": "moon",
+    ...     "R2": 1000000,
+    ...     "fp_nc": "./output/",
+    ...     "theta_arr_r2": theta_arr_r2,
+    ...     "phi_arr_r2": phi_arr_r2,
+    ...     "p0s": p0s,
+    ...     "p2s": p2s,
+    ...     "p_hits": p_hits,
+    ...     "ref_dirs": ref_dirs,
+    ...     "amp_arr": amp_arr,
+    ...     "alp_arr": alp_arr,
+    ... }
+    >>> corrections = [
+    ...     ("solid_angle", {}),
+    ...     ("reflection_rate", {"apply_ref": "average"}),
+    ...     ("vertical_direction", {}),
+    ... ]
+    >>> result = steve_correction_pipeline(heat_da, params, corrections)
+    """
+    # 補正関数のマッピング（新しい補正を追加する場合はここに追加）
+    correction_functions = {
+        "solid_angle": i_the_solid_angle_adapted,
+        "reflection_rate": ii_the_reflection_rate_adapted,
+        "vertical_direction": iii_the_vertical_direction_adapted,
+        # 将来的に新しい補正を追加する例：
+        # "new_correction_iv": iv_new_correction_function,
+    }
+    
+    result_da = heat_da
+    
+    for correction_name, correction_params in corrections:
+        if correction_name not in correction_functions:
+            raise ValueError(f"Unknown correction: {correction_name}. "
+                           f"Available: {list(correction_functions.keys())}")
+        
+        # 補正関数を取得
+        func = correction_functions[correction_name]
+        
+        # 補正を適用
+        result_da = func(result_da, params, **correction_params)
+        print(f"✓ Applied correction: {correction_name}")
+    
+    return result_da
+
+
+# ----------------------------------------
+# 各補正関数の統一インターフェース版
+# ----------------------------------------
+
+def i_the_solid_angle_adapted(data_da, params):
+    """
+    立体角補正（パイプライン対応版）
+    
+    既存のi_the_solid_angle関数と同じ処理を統一インターフェースで提供
+    """
+    return i_the_solid_angle(data_da)
+
+
+def ii_the_reflection_rate_adapted(data_da, params, apply_ref="average"):
+    """
+    反射率補正（パイプライン対応版）
+    
+    既存のii_the_reflection_rate関数を統一インターフェースでラップ
+    """
+    return ii_the_reflection_rate(
+        params["target"], 
+        params["R2"], 
+        data_da, 
+        params["fp_nc"], 
+        apply_ref=apply_ref
+    )
+
+
+def iii_the_vertical_direction_adapted(data_da, params):
+    """
+    垂直方向補正（パイプライン対応版）
+    
+    既存のiii_the_vertical_direction関数を統一インターフェースでラップ
+    """
+    return iii_the_vertical_direction(
+        params["p2s"], 
+        params["ref_dirs"], 
+        params["theta_arr_r2"], 
+        data_da
+    )
