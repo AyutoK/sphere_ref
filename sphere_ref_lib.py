@@ -6,8 +6,8 @@ import os
 import xarray as xr
 import tqdm
 
-def set_output_dir():
-    output_dir = "./output/" # 画像出力先
+def set_output_dir(out="./output/"):
+    output_dir = out  # 画像出力先
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
     return output_dir
@@ -116,7 +116,9 @@ def abs_check_r2(R2, p2s):
 
     abs_check = p2s_abs - abs_true
 
-    return np.all(np.abs(abs_check) < ths)
+    result_check = np.all(np.abs(abs_check) < ths)
+
+    return result_check
 
 # ----------------------------------------
 # 光線の図示と角度分布
@@ -209,18 +211,19 @@ def plot_rays_hist_2d(R2s, xs, d, Z0, p0s, p2s, p_hits, ref_dirs, fp, R=1.0):
 # ----------------------------------------
 # 球面において反射した角度分布を計算し、netCDF形式で保存
 # ----------------------------------------
-def set_output_dir_nc():
-    fp_nc = "./output/" # 画像出力先
+def set_output_dir_nc(out_nc="./nc_underground/"):
+    fp_nc = out_nc
     if not os.path.exists(fp_nc):
         os.makedirs(fp_nc)
+    return fp_nc
 
-def make_nc_sphere(R, step, xs, d, Z0, fp_nc):
+def make_nc_sphere(R2, step, xs, d, Z0, fp_nc):
 
     y_array = np.arange(-1,1,step*20)
-    make_R2 = 1000000
+    make_R2 = R2
 
     for y in tqdm.tqdm(y_array):
-        theta_arr_r2, phi_arr_r2, p0s, p2s, p_hits, ref_dirs = ref_rays_count(make_R2, xs, d, Z0, R, y=y, print_info=False)
+        theta_arr_r2, phi_arr_r2, p0s, p2s, p_hits, ref_dirs = ref_rays_count(make_R2, xs, d, Z0, R=1.0, y=y, print_info=False)
         assert abs_check_r2(make_R2, p2s), f"R2={make_R2}: 観測点の距離誤差が閾値を超えました。"
         ds = xr.Dataset(
             {
