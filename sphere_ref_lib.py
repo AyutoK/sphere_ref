@@ -292,6 +292,19 @@ def make_thph_2dhist(ds_all):
     return heat_da
 
 # ----------------------------------------
+# ヒートマップをとりあえず描画(保存なし)
+# ----------------------------------------
+def draw_hist2d(heat_da, R2):
+    plt.figure(figsize=(10, 6))
+    heat_da.plot.imshow(x="theta", y="phi", origin="lower", cmap="inferno")
+    plt.xlabel("θ (deg)")
+    plt.ylabel("φ (deg)")
+    plt.title(f"2D histogram: counts over φ × θ (all y) R={R2}")
+    plt.tight_layout()
+    #plt.savefig(fp + f"2dhist_theta_vs_phi_R{R2}.png")
+    plt.show()
+
+# ----------------------------------------
 # 反射率を計算するために必要な関数たち
 # ----------------------------------------
 
@@ -455,6 +468,12 @@ def get_default_param(target):
     
     return e1, e2, H_obs, D_moon, R_moon, e1, e2, tandelta
 
+# phiについて積分し、thetaについて一次元化する
+def sum_phi(heat_da, phi_min, phi_max):
+    heat_phi_0_90 = heat_da.where((heat_da["phi"] >= phi_min) & (heat_da["phi"] <= phi_max), drop=True)
+    theta_1d_counts_phi_0_90 = heat_phi_0_90.sum("phi")
+    theta_1d_counts_phi_0_90.name = "counts (sum over phi 0-90)"
+    return theta_1d_counts_phi_0_90
 
 # ----------------------------------------
 # 二次元ヒートマップを補正
@@ -501,6 +520,19 @@ def i_the_solid_angle(heat_da):
     ste_da.name = "counts per sinθ"
 
     return ste_da
+
+# ----------------------------------------
+# I-I.立体角あたりに補正後、さらに単位面積あたりに補正
+# (1srでR=1の球面が照らされる面積を基準)
+# 立体角補正に加えて、観測点の半径R2に応じてさらにR2^2で割る
+# ----------------------------------------
+
+def i2_the_solid_angle_field(R2,heat_da):
+    stef_da = heat_da / np.sin(np.radians(heat_da["theta"])) / (R2 ** 2)
+    stef_da.name = "counts per sinθ per unit area"
+
+    return stef_da
+
 
 # ----------------------------------------
 # II.反射率を導入
@@ -609,7 +641,7 @@ def iii_the_vertical_direction(p2s, ref_dirs, theta_arr_r2, ste_da_ref):
 
     if np.all(p2s_norm - p2s_norm_true < ths):
         p2s_normed = np.array([p2s[x]/p2s_norm[0] for x in range(len(p2s))])
-        print("p2sが正常に単位ベクトル化できました")
+        #print("p2sが正常に単位ベクトル化できました")
         for x in range(len(p2s)):
             costh[x] = np.dot(p2s_normed[x], ref_dirs[x])
     else:
@@ -702,6 +734,7 @@ def steve_correction_pipeline(heat_da, params, corrections):
         "solid_angle": i_the_solid_angle_adapted,
         "reflection_rate": ii_the_reflection_rate_adapted,
         "vertical_direction": iii_the_vertical_direction_adapted,
+        "solid_angle_field": i2_the_solid_angle_field_adapted,
         # 将来的に新しい補正を追加する例：
         # "new_correction_iv": iv_new_correction_function,
     }
@@ -735,6 +768,13 @@ def i_the_solid_angle_adapted(data_da, params):
     """
     return i_the_solid_angle(data_da)
 
+def i2_the_solid_angle_field_adapted(data_da, params):
+    """
+    単位面積あたりの立体角補正（パイプライン対応版）
+    
+    既存のi2_the_solid_angle_field関数と同じ処理を統一インターフェースで提供
+    """
+    return i2_the_solid_angle_field(params["R2"], data_da)
 
 def ii_the_reflection_rate_adapted(data_da, params, apply_ref="average"):
     """
