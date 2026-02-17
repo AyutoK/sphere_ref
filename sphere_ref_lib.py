@@ -528,7 +528,8 @@ def i_the_solid_angle(heat_da):
 # ----------------------------------------
 
 def i2_the_solid_angle_field(R2,heat_da):
-    stef_da = heat_da / np.sin(np.radians(heat_da["theta"])) / (R2 ** 2)
+    Rf = R2 - 0.5 # 球面反射の際の焦点
+    stef_da = heat_da / np.sin(np.radians(heat_da["theta"])) / (Rf ** 2)
     stef_da.name = "counts per sinθ per unit area"
 
     return stef_da
@@ -549,7 +550,7 @@ def calc_alpha_opt(ts, H, R, alpha_target):
     return alpha - alpha_target
 
 # 探査機角度0.5度から179.5度まで1度刻みで入射角を計算し、netCDF形式で保存
-def make_nc_alpha_ts(hs, fp_nc):
+def make_nc_alpha_ts(hs, fp_nc, fn = "alpha_to_theta_forhist.nc"):
     match_alpha = np.arange(0.5,180,1)
 
     deriv_theta = np.zeros((len(match_alpha), len(hs)))
@@ -564,23 +565,23 @@ def make_nc_alpha_ts(hs, fp_nc):
     dth_da.name = "theta_s"
     dth_da
 
-    dth_da.to_netcdf(fp_nc + "alpha_to_theta_forhist.nc")
+    dth_da.to_netcdf(fp_nc + fn)
 
 # 探査機角度+高度→入射角のnetCDFデータを読み込み
-def load_nc_alpha_ts(fp_nc):
+def load_nc_alpha_ts(fp_nc, fn = "alpha_to_theta_forhist.nc"):
     # alpha_to_theta_forhist.ncが存在するかチェック
-    if not os.path.exists(fp_nc + "alpha_to_theta_forhist.nc"):
-        raise FileNotFoundError(f"{fp_nc}alpha_to_theta_forhist.nc does not exist")
+    if not os.path.exists(fp_nc + fn):
+        raise FileNotFoundError(f"{fp_nc}{fn} does not exist")
     else:
-        dth_da = xr.open_dataarray(fp_nc + "alpha_to_theta_forhist.nc")
-        print(f"alpha_to_theta_forhist.nc loaded correctly.")
+        dth_da = xr.open_dataarray(fp_nc + fn)
+        print(f"{fn} loaded correctly.")
 
     return dth_da
 
 # II.を行う
-def ii_the_reflection_rate(target, R2, ste_da, fp_nc, apply_ref="average"):
+def ii_the_reflection_rate(target, R2, ste_da, fp_nc, apply_ref="average", fn="alpha_to_theta_forhist_ver2.nc"):
 
-    att_da = load_nc_alpha_ts(fp_nc)
+    att_da = load_nc_alpha_ts(fp_nc, fn=fn)
 
     if R2 != 1000000:
         inc_angle = att_da.sel(H=R2, method="nearest")
@@ -776,7 +777,7 @@ def i2_the_solid_angle_field_adapted(data_da, params):
     """
     return i2_the_solid_angle_field(params["R2"], data_da)
 
-def ii_the_reflection_rate_adapted(data_da, params, apply_ref="average"):
+def ii_the_reflection_rate_adapted(data_da, params, apply_ref="average", fn="alpha_to_theta_forhist_ver2.nc"):
     """
     反射率補正（パイプライン対応版）
     
@@ -787,7 +788,8 @@ def ii_the_reflection_rate_adapted(data_da, params, apply_ref="average"):
         params["R2"], 
         data_da, 
         params["fp_nc"], 
-        apply_ref=apply_ref
+        apply_ref=apply_ref,
+        fn=fn
     )
 
 
