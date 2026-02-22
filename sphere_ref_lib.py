@@ -240,7 +240,45 @@ def make_nc_sphere(R2, step, xs, d, Z0, fp_nc):
         else:
             ds_all = xr.concat([ds_all, ds], dim="y", join="outer")
 
-    ds_all.to_netcdf(fp_nc + f"reflected_rays_R2_{make_R2}.nc")
+    if len(str(make_R2)) > 4:
+        make_R2_r = make_R2.round(3)
+    else:
+        make_R2_r = make_R2
+
+    ds_all.to_netcdf(fp_nc + f"reflected_rays_R2_{make_R2_r}.nc")
+
+# ----------------------------------------
+# 入射波強度を計算 ref_rays_countを流用
+# ----------------------------------------
+def make_nc_inc(R2, step, xs, d, Z0, fp_nc):
+    y_array = np.arange(-R2,R2+step,step*20)
+    norm_R2 = R2
+
+    for y in tqdm.tqdm(y_array):
+        theta_arr_r2, phi_arr_r2, p0s, p2s, p_hits, ref_dirs = ref_rays_count(norm_R2*2, xs, d, Z0, R=norm_R2, y=y, print_info=False)
+        assert abs_check_r2(norm_R2, p_hits), f"R2={norm_R2}: 基準点の距離誤差が閾値を超えました。"
+        p_hits_arr = np.array(p_hits)
+        inc_theta_arr = np.arccos(p_hits_arr[:,2] / np.linalg.norm(p_hits, axis=1))
+        inc_phi_arr = np.arctan2(p_hits_arr[:,1], p_hits_arr[:,0])
+        # 0未満の場合は2πを足す
+        inc_phi_arr[inc_phi_arr < 0] += 2*np.pi
+
+        ds = xr.Dataset(
+            {
+                "theta": (("x"), inc_theta_arr),
+                "phi": (("x"), inc_phi_arr),
+            },
+            coords={
+                "x": np.array([x[0] for x in p_hits]),  # 反射点のx座標
+                "y": y,
+            }
+        )
+        if y == y_array[0]:
+            ds_all = ds
+        else:
+            ds_all = xr.concat([ds_all, ds], dim="y", join="outer")
+
+    ds_all.to_netcdf(fp_nc + f"incident_rays_norm_{norm_R2}.nc")
 
 # ----------------------------------------
 # netCDFファイルを読み込み(角度情報)
@@ -254,6 +292,18 @@ def load_nc_sphere(R2, fp_nc):
     else:
         ds_all = xr.open_dataset(fp_nc + f"reflected_rays_R2_{R2}.nc")
         print(f"reflected_rays_R2_{R2}.nc loaded correctly.")
+
+    return ds_all
+
+def load_nc_inc(R2, fp_nc):
+    # read_r2 = 1.2 or 2 or 5 or 10 or 1000000
+
+    # incident_rays_norm_{R2}.ncが存在するかチェック
+    if not os.path.exists(fp_nc + f"incident_rays_norm_{R2}.nc"):
+        raise FileNotFoundError(f"{fp_nc}incident_rays_norm_{R2}.nc does not exist")
+    else:
+        ds_all = xr.open_dataset(fp_nc + f"incident_rays_norm_{R2}.nc")
+        print(f"incident_rays_norm_{R2}.nc loaded correctly.")
 
     return ds_all
 
@@ -528,7 +578,7 @@ def i_the_solid_angle(heat_da):
 # ----------------------------------------
 
 def i2_the_solid_angle_field(R2,heat_da):
-    Rf = R2 - 0.5 # 球面反射の際の焦点
+    Rf = R2 - 0.5 # 球面反射の際の焦点からの距離
     stef_da = heat_da / np.sin(np.radians(heat_da["theta"])) / (Rf ** 2)
     stef_da.name = "counts per sinθ per unit area"
 
@@ -558,7 +608,7 @@ def make_nc_alpha_ts(hs, fp_nc, fn = "alpha_to_theta_forhist.nc"):
     # hs (altitudes) x match_alpha (alpha targets)
     for j, h in enumerate(hs):
         for i, ma in enumerate(match_alpha):
-            d_th = optimize.fsolve(calc_alpha_opt, 1.0, args=(h, 1000, ma))
+            d_th = optimize.fsolve(calc_alpha_opt, 1.0, args=(h-1000, 1000, ma)) # hは地表面からの距離
             deriv_theta[i, j] = float(d_th[0])
 
     dth_da = xr.DataArray(deriv_theta, coords={"alpha": match_alpha, "H": hs}, dims=["alpha", "H"])
@@ -581,10 +631,12 @@ def load_nc_alpha_ts(fp_nc, fn = "alpha_to_theta_forhist.nc"):
 # II.を行う
 def ii_the_reflection_rate(target, R2, ste_da, fp_nc, apply_ref="average", fn="alpha_to_theta_forhist_ver2.nc"):
 
+    R2_for = R2 * 1000 # alpha to thetaの変換で用いるRはなぜか1000倍しており、慣例化している
+
     att_da = load_nc_alpha_ts(fp_nc, fn=fn)
 
     if R2 != 1000000:
-        inc_angle = att_da.sel(H=R2, method="nearest")
+        inc_angle = att_da.sel(H=R2_for, method="nearest")
     else:
         inc_angle = ste_da["theta"]/2 # 無限遠では入射角 ≒ 探査機角度 / 2
 
@@ -680,7 +732,7 @@ def iii_the_vertical_direction(p2s, ref_dirs, theta_arr_r2, ste_da_ref):
 # パイプライン方式の補正関数（拡張性向上版）
 # ----------------------------------------
 
-def steve_correction_pipeline(heat_da, params, corrections):
+def steve_correction_pipeline(heat_da, params, corrections, print_info=True):
     """
     補正関数をパイプライン形式で適用（拡張性向上版）
     
@@ -752,7 +804,8 @@ def steve_correction_pipeline(heat_da, params, corrections):
         
         # 補正を適用
         result_da = func(result_da, params, **correction_params)
-        print(f"✓ Applied correction: {correction_name}")
+        if print_info:
+            print(f"✓ Applied correction: {correction_name}")
     
     return result_da
 

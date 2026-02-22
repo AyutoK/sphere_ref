@@ -1,5 +1,6 @@
 /nc_underground/
 /output/
+/output_ver2/
 /output_refl/
 /__pycache__/
 *.pyc
