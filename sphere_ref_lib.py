@@ -31,7 +31,7 @@ def set_basic_params():
 # 光線追跡
 # ----------------------------------------
 
-def ref_rays_count(R2, xs, d, Z0, R=1.0, y=0.0, print_info=False):
+def ref_rays_count(R2, xs, d, Z0, R=1.0, y=0.0, print_info=False, inc_on=False):
 
     theta_list = []
     phi_list = []
@@ -44,6 +44,8 @@ def ref_rays_count(R2, xs, d, Z0, R=1.0, y=0.0, print_info=False):
     p_hits = []
 
     rs = []
+
+    occl_flag = False
 
     for x in xs:
         p0 = np.array([x, y, Z0])
@@ -59,6 +61,22 @@ def ref_rays_count(R2, xs, d, Z0, R=1.0, y=0.0, print_info=False):
         t = (-b - np.sqrt(D)) / (2*a)
         if t < 0:
             continue
+
+        if inc_on:
+            ti = (-b + np.sqrt(D)) / (2*a)
+            if t < 0:
+                continue
+
+            pinc = p0 + ti * d  # 反射点の位置ベクトル(裏側)
+
+            if np.linalg.norm([pinc[0],pinc[1],0]) <= R:
+                pinc = np.nan # 衛星にぶつかる場合は除外(掩蔽されている)
+                occl_flag = True
+            else:
+                thi = np.arccos(pinc[2] / np.linalg.norm(pinc))
+                phii = np.arctan2(pinc[1], pinc[0])
+                thi_deg = np.degrees(thi)
+                phii_deg = np.degrees(phii)
 
         p = p0 + t * d  # 反射点の位置ベクトル
         n = p / np.linalg.norm(p)
@@ -94,9 +112,17 @@ def ref_rays_count(R2, xs, d, Z0, R=1.0, y=0.0, print_info=False):
         p0s.append(p0)
         p2s.append(p2)
         p_hits.append(p)
+        if inc_on and not occl_flag:
+            p_hits.append(pinc)
         ref_dirs.append(r)
         theta_list.append(theta_deg)
         phi_list.append(phi_deg) # y=0では当然0 or pi
+        if inc_on and not occl_flag:
+            theta_list.append(thi_deg)
+            phi_list.append(phii_deg)
+
+        if inc_on:
+            occl_flag = False
 
     theta_arr_r2 = np.array(theta_list)
     phi_arr_r2 = np.array(phi_list)
@@ -255,7 +281,7 @@ def make_nc_inc(R2, step, xs, d, Z0, fp_nc):
     norm_R2 = R2
 
     for y in tqdm.tqdm(y_array):
-        theta_arr_r2, phi_arr_r2, p0s, p2s, p_hits, ref_dirs = ref_rays_count(norm_R2*2, xs, d, Z0, R=norm_R2, y=y, print_info=False)
+        theta_arr_r2, phi_arr_r2, p0s, p2s, p_hits, ref_dirs = ref_rays_count(norm_R2*2, xs, d, Z0, R=norm_R2, y=y, print_info=False, inc_on=True)
         assert abs_check_r2(norm_R2, p_hits), f"R2={norm_R2}: 基準点の距離誤差が閾値を超えました。"
         p_hits_arr = np.array(p_hits)
         inc_theta_arr = np.arccos(p_hits_arr[:,2] / np.linalg.norm(p_hits, axis=1))
@@ -269,7 +295,7 @@ def make_nc_inc(R2, step, xs, d, Z0, fp_nc):
                 "phi": (("x"), inc_phi_arr),
             },
             coords={
-                "x": np.array([x[0] for x in p_hits]),  # 反射点のx座標
+                "x": np.array([x for x in range(len(p_hits))]),  # 反射点の番号(x座標ではない)
                 "y": y,
             }
         )
