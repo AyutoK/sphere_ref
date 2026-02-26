@@ -48,6 +48,9 @@ def ref_rays_count(R2, xs, d, Z0, R=1.0, y=0.0, print_info=False, inc_on=False):
     occl_flag = False
 
     for x in xs:
+
+        occl_flag = False
+
         p0 = np.array([x, y, Z0])
 
         a = np.dot(d, d)
@@ -274,7 +277,7 @@ def make_nc_sphere(R2, step, xs, d, Z0, fp_nc):
     ds_all.to_netcdf(fp_nc + f"reflected_rays_R2_{make_R2_r}.nc")
 
 # ----------------------------------------
-# 入射波強度を計算 ref_rays_countを流用
+# 入射波強度を計算 ref_rays_countを流用 ※考え方が違いそう
 # ----------------------------------------
 def make_nc_inc(R2, step, xs, d, Z0, fp_nc):
     y_array = np.arange(-R2,R2+step,step*20)
@@ -332,6 +335,22 @@ def load_nc_inc(R2, fp_nc):
         print(f"incident_rays_norm_{R2}.nc loaded correctly.")
 
     return ds_all
+
+# ----------------------------------------
+# 場所によって一定な入射波強度を導出
+# ----------------------------------------
+def calc_inc_field(R_norm, y_step=20):
+    R, step, xs, d, Z0, R2 = set_basic_params()
+    ys = np.arange(-1,1,step*y_step)
+
+    sum_ray = len(xs) * len(ys)
+    sum_field = (xs[-1] - xs[0]) * (ys[-1] - ys[0])
+
+    dense = sum_ray / sum_field
+    sphere_unit_field = (np.radians(1) ** 2) / ((R_norm - 1) ** 2)
+    unit_inc = dense * sphere_unit_field
+
+    return sum_ray, sum_field, unit_inc
 
 # ----------------------------------------
 # 角度分布から二次元ヒートマップを作成(描画なし)
