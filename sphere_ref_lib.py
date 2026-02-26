@@ -347,7 +347,7 @@ def calc_inc_field(R_norm, y_step=20):
     sum_field = (xs[-1] - xs[0]) * (ys[-1] - ys[0])
 
     dense = sum_ray / sum_field
-    sphere_unit_field = (np.radians(1) ** 2) / ((R_norm - 1) ** 2)
+    sphere_unit_field = (np.radians(1) ** 2) / (1 ** 2) * (R_norm ** 2)
     unit_inc = dense * sphere_unit_field
 
     return sum_ray, sum_field, unit_inc
@@ -629,6 +629,68 @@ def i2_the_solid_angle_field(R2,heat_da):
 
     return stef_da
 
+def i3_the_solid_angle_field_upd(R2,heat_da):
+    Rf, thf, thr = saf_clear_standard(R2, heat_da)
+
+    Rf = xr.DataArray(Rf, coords={"theta": heat_da["theta"]}, dims="theta")
+
+    SR_SfR =(Rf * thf) ** 2 / (R2 * np.radians(1)) ** 2
+    SfR_Sf = 1 / (Rf ** 2)
+    Sf_Sf1deg = thr
+
+    field_cors = xr.DataArray(SR_SfR * SfR_Sf * Sf_Sf1deg, coords={"theta": heat_da["theta"]}, dims="theta")
+
+    stef_da = heat_da / np.sin(np.radians(heat_da["theta"])) * field_cors
+    stef_da.name = "counts per sinθ per unit area"
+    # がっちり面積比を詰めたら中心からの面積のみ効いてくる?Rfは関係なし?
+
+    return stef_da
+
+# ----------------------------------------
+# 改良版 : 焦点からの拡散による立体角の差異を考慮に入れる
+# 基準 : 半径R=1の1度×1度範囲の面積
+# ----------------------------------------
+
+def saf_clear_standard(R2,heat_da,f=0.5):
+    thss = heat_da["theta"].values
+
+    Rfs, thfs, thrs = np.zeros_like(thss), np.zeros_like(thss), np.zeros_like(thss)
+
+    for i in range(len(thss)):
+
+        ths = thss[i]
+
+        Rb = np.full_like(ths, R2)
+        sp, cp = np.sin(np.radians(ths+0.5)), np.cos(np.radians(ths+0.5))
+        sz, cz = np.sin(np.radians(ths)), np.cos(np.radians(ths))
+        sm, cm = np.sin(np.radians(ths-0.5)), np.cos(np.radians(ths-0.5))
+        Rf = np.sqrt(Rb ** 2 + 0.5**2 - Rb * np.cos(np.radians(ths))) # 焦点からの距離
+        Ra = (cp + np.sqrt(cp**2 + 4 * Rf**2 * f**2)) / 2
+        Rc = (cm + np.sqrt(cm**2 + 4 * Rf**2 * f**2)) / 2
+
+        r1 = np.array([Ra*cp, Ra*sp])
+        r2 = np.array([Rb*cz, Rb*sz])
+        r3 = np.array([Rc*cm, Rc*sm])
+
+        sf = np.array([f,0])
+
+        r1f = r1 - sf
+        r2f = r2 - sf
+        r3f = r3 - sf
+
+        r12 = np.linalg.norm(r1f - r2f, axis=0)
+        r23 = np.linalg.norm(r2f - r3f, axis=0)
+
+        thf = (r12 + r23) / Rf
+
+        thr = (np.radians(1) ** 2) / (thf ** 2)
+
+        Rfs[i] = Rf
+        thfs[i] = thf
+        thrs[i] = thr
+
+    return Rfs, thfs, thrs
+
 
 # ----------------------------------------
 # II.反射率を導入
@@ -833,6 +895,7 @@ def steve_correction_pipeline(heat_da, params, corrections, print_info=True):
         "reflection_rate": ii_the_reflection_rate_adapted,
         "vertical_direction": iii_the_vertical_direction_adapted,
         "solid_angle_field": i2_the_solid_angle_field_adapted,
+        "solid_angle_field_upd": i3_the_solid_angle_field_upd_adapted,
         # 将来的に新しい補正を追加する例：
         # "new_correction_iv": iv_new_correction_function,
     }
@@ -874,6 +937,10 @@ def i2_the_solid_angle_field_adapted(data_da, params):
     既存のi2_the_solid_angle_field関数と同じ処理を統一インターフェースで提供
     """
     return i2_the_solid_angle_field(params["R2"], data_da)
+
+def i3_the_solid_angle_field_upd_adapted(data_da, params):
+
+    return i3_the_solid_angle_field_upd(params["R2"], data_da)
 
 def ii_the_reflection_rate_adapted(data_da, params, apply_ref="average", fn="alpha_to_theta_forhist_ver2.nc"):
     """
