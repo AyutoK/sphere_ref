@@ -7,3 +7,4 @@
 *.pyo
 *.pyd
 sphere_variables.py
+/archives/
