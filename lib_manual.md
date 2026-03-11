@@ -1,6 +1,8 @@
 # sphere_ref_lib.py
 
-推奨する略称 : srl
+略称 : srl
+
+パッケージ numpy, matplotlib, scipy.optimize, xarray, os, tqdmを使用
 
 ## srl.set_output_dir(out=./output/)
 画像の出力先を指定 存在しなければ作成  
@@ -106,3 +108,48 @@ netCDF形式ファイルの出力/読み込み先を指定 存在しなければ
 - d : *ndarray* 電波の入射方向
 - Z0 : *float* 電波源のz座標
 - fp_nc : *string* 保存場所  
+
+## srl.make_nc_inc(R, step, xs, d, Z0, fp_nc)
+これは使わない
+
+## srl.load_nc_sphere(R2, fp_nc)
+netCDF形式で保存された反射角の表を取得
+
+>parameters:
+
+- R2 : *float* 観測点の半径
+- fp_nc : *string* 保存場所
+
+>returns:
+
+- ds_all : *xarray*
+    - 横軸x座標、縦軸y座標
+
+## srl.load_nc_inc(R2, fp_nc)
+これも使わない
+
+## srl.calc_inc_field(R_norm, y_step=20)
+場所によって一定な入射波強度を導出
+$R=R_{norm}$の球面を$\theta=90\deg$における$1\deg \times 1\deg$が照らす面積を基準にする
+
+>parameters:
+
+- R_norm : *float* 基準となる面積の半径
+- y_step : *float* x方向に対するy方向の入射光線の間隔の差, optional
+
+>returns:
+
+- sum_ray : *int* 入射光線の総数
+- sum_field : *float* 入射波を照射する面積
+- unit_inc : *float* 基準面積あたりの光線の数
+
+## srl.make_thph_2dhist(ds_all)
+反射角の分布のxarrayから二次元ヒートマップを作成
+
+>parameters:
+
+- ds_all : *xarray* 角度分布のxarray(load_nc_sphereで作成したものそのままが望ましい)
+
+>returns:
+
+- heat_da : *xarray* 作成した二次元ヒートマップ
