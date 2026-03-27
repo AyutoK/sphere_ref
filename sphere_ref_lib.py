@@ -7,12 +7,46 @@ import xarray as xr
 import tqdm
 
 def set_output_dir(out="./output/"):
+    """画像などの出力先ディレクトリを作成して返す。
+
+    Parameters
+    ----------
+    out : str, default "./output/"
+        出力先ディレクトリ。
+
+    Returns
+    -------
+    output_dir : str
+        作成済みの出力先ディレクトリパス。
+    """
     output_dir = out  # 画像出力先
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
     return output_dir
 
 def set_basic_params():
+    """計算に用いる基本パラメータを返す。
+
+    Notes
+    -----
+    - `xs` は `0..R` を `step` でサンプル。
+    - `d` は入射方向ベクトル（デフォルトで -z 方向）。
+
+    Returns
+    -------
+    R : float
+        球半径（デフォルト 1.0）。
+    step : float
+        サンプリング刻み（デフォルト 0.0001）。
+    xs : np.ndarray
+        x サンプル配列。
+    d : np.ndarray, shape (3,)
+        入射方向ベクトル。
+    Z0 : float
+        入射開始点の z 座標。
+    R2 : float
+        観測球面の半径。
+    """
     # ----------------------------------------
     # 基本パラメータ
     # ----------------------------------------
@@ -32,6 +66,54 @@ def set_basic_params():
 # ----------------------------------------
 
 def ref_rays_count(R2, xs, d, Z0, R=1.0, y=0.0, print_info=False, inc_on=False):
+    """鏡面反射を仮定したレイトレーシングで、観測球面上の角度分布を返す。
+
+    概要
+    ----
+    1) 入射直線と反射球の交点 p を求める
+    2) 法線 n から反射方向 r を求める
+    3) 反射直線と観測球の交点 p2 を求める
+    4) p2 を単位化して (theta, phi) を算出
+
+    Parameters
+    ----------
+    R2 : float
+        観測球面の半径。
+    xs : np.ndarray
+        入射開始点の x 座標サンプル（p0=[x,y,Z0]）。
+    d : np.ndarray, shape (3,)
+        入射方向ベクトル。
+    Z0 : float
+        入射開始点の z 座標。
+    R : float, default 1.0
+        反射球半径。
+    y : float, default 0.0
+        入射開始点の y 座標。
+    print_info : bool, default False
+        サンプル数などを表示する。
+    inc_on : bool, default False
+        True のとき、裏側交点（入射側）も角度リストに追加する。
+
+    Returns
+    -------
+    theta_arr_r2 : np.ndarray
+        theta（deg）。
+    phi_arr_r2 : np.ndarray
+        phi（deg, 範囲 [0, 360)）。
+    p0s : list[np.ndarray]
+        入射開始点 p0 の列。
+    p2s : list[np.ndarray]
+        観測球面交点 p2 の列。
+    p_hits : list[np.ndarray]
+        反射点 p の列（inc_on の場合、条件により裏側交点も混在）。
+    ref_dirs : list[np.ndarray]
+        反射方向 r の列。
+
+    Notes
+    -----
+    - inc_on=True の場合、戻り配列に裏側交点が混在しうる点に注意。
+    - 掩蔽判定は実装通り（用途に応じて妥当性確認推奨）。
+    """
 
     theta_list = []
     phi_list = []
@@ -138,6 +220,20 @@ def ref_rays_count(R2, xs, d, Z0, R=1.0, y=0.0, print_info=False, inc_on=False):
     return theta_arr_r2, phi_arr_r2, p0s, p2s, p_hits, ref_dirs
 
 def abs_check_r2(R2, p2s):
+    """点列が半径 R2 の球面上にあるか（距離誤差が閾値以下か）を検証する。
+
+    Parameters
+    ----------
+    R2 : float
+        期待する半径。
+    p2s : array-like, shape (N,3)
+        点列。
+
+    Returns
+    -------
+    result_check : bool
+        全点が閾値内なら True。
+    """
     p2s_abs = np.array(np.linalg.norm(p2s, axis=1))
     abs_true = np.full(len(p2s), R2)
 
@@ -154,6 +250,29 @@ def abs_check_r2(R2, p2s):
 # ----------------------------------------
 
 def plot_rays_hist_2d(R2s, xs, d, Z0, p0s, p2s, p_hits, ref_dirs, fp, R=1.0):
+    """光線（x-z断面）と theta 1Dヒストグラムを描画して保存する。
+
+    Parameters
+    ----------
+    R2s : list[float]
+        観測球面半径のリスト。
+    xs, d, Z0, R :
+        レイトレーシングのパラメータ。
+    p0s, p2s, p_hits, ref_dirs :
+        事前計算済みの点列・方向列（ただし本関数内で再計算も行う）。
+    fp : str
+        保存先ディレクトリ（末尾 "/" 推奨）。
+
+    Outputs
+    -------
+    - inc_ref_rays_Rmix.png
+    - theta_hist_Rmix.png
+
+    Notes
+    -----
+    - 実装通り `ic` の計算が `p_hits` 長に依存するため、
+      `p_hits` と `xs` の対応が崩れるケース（inc_on 等）では注意。
+    """
     # ------------------------------------------------------
     # 描画の準備
     # ------------------------------------------------------
@@ -241,12 +360,35 @@ def plot_rays_hist_2d(R2s, xs, d, Z0, p0s, p2s, p_hits, ref_dirs, fp, R=1.0):
 # 球面において反射した角度分布を計算し、netCDF形式で保存
 # ----------------------------------------
 def set_output_dir_nc(out_nc="./nc_underground/"):
+    """netCDF 出力用ディレクトリを作成して返す。"""
     fp_nc = out_nc
     if not os.path.exists(fp_nc):
         os.makedirs(fp_nc)
     return fp_nc
 
 def make_nc_sphere(R2, step, xs, d, Z0, fp_nc):
+    """反射角分布を y 走査しながら計算し、netCDF として保存する。
+
+    Parameters
+    ----------
+    R2 : float
+        観測球面半径。
+    step : float
+        y 走査刻みの基準（実際の y 刻みは step*20）。
+    xs, d, Z0 :
+        レイトレーシングのパラメータ。
+    fp_nc : str
+        出力ディレクトリ。
+
+    Outputs
+    -------
+    reflected_rays_R2_{R2}.nc
+
+    Notes
+    -----
+    - coords の x は p_hits の x 座標。
+    - x 重複がありうるため concat(join="outer") の挙動に注意。
+    """
 
     y_array = np.arange(-1,1,step*20)
     make_R2 = R2
@@ -280,6 +422,13 @@ def make_nc_sphere(R2, step, xs, d, Z0, fp_nc):
 # 入射波強度を計算 ref_rays_countを流用 ※考え方が違いそう
 # ----------------------------------------
 def make_nc_inc(R2, step, xs, d, Z0, fp_nc):
+    """入射波（と思しき）角度分布を計算し、netCDF 保存する。
+
+    Notes
+    -----
+    - 実装コメント通り、反射角分布とは考え方が異なる可能性あり。
+    - 保存される theta/phi は **ラジアン**（deg ではない）。
+    """
     y_array = np.arange(-R2,R2+step,step*20)
     norm_R2 = R2
 
@@ -313,6 +462,17 @@ def make_nc_inc(R2, step, xs, d, Z0, fp_nc):
 # netCDFファイルを読み込み(角度情報)
 # ----------------------------------------
 def load_nc_sphere(R2, fp_nc):
+    """反射角分布 netCDF（reflected_rays_R2_{R2}.nc）を読み込む。
+
+    Raises
+    ------
+    FileNotFoundError
+        ファイルが存在しない場合。
+
+    Returns
+    -------
+    ds_all : xr.Dataset
+    """
     # read_r2 = 1.2 or 2 or 5 or 10 or 1000000
 
     # reflected_rays_R2_{R2}.ncが存在するかチェック
@@ -325,6 +485,17 @@ def load_nc_sphere(R2, fp_nc):
     return ds_all
 
 def load_nc_inc(R2, fp_nc):
+    """入射角分布 netCDF（incident_rays_norm_{R2}.nc）を読み込む。
+
+    Raises
+    ------
+    FileNotFoundError
+        ファイルが存在しない場合。
+
+    Returns
+    -------
+    ds_all : xr.Dataset
+    """
     # read_r2 = 1.2 or 2 or 5 or 10 or 1000000
 
     # incident_rays_norm_{R2}.ncが存在するかチェック
@@ -340,6 +511,24 @@ def load_nc_inc(R2, fp_nc):
 # 場所によって一定な入射波強度を導出
 # ----------------------------------------
 def calc_inc_field(R_norm, y_step=20):
+    """サンプリング密度から単位立体角あたりの入射レイ密度を概算する。
+
+    Parameters
+    ----------
+    R_norm : float
+        スケーリング半径（観測半径など）。
+    y_step : int, default 20
+        y の刻み係数（ys = arange(-1,1,step*y_step)）。
+
+    Returns
+    -------
+    sum_ray : int
+        総レイ数。
+    sum_field : float
+        サンプリング面積（x-y 平面上の概算）。
+    unit_inc : float
+        1deg×1deg を仮定した入射密度（概算）。
+    """
     R, step, xs, d, Z0, R2 = set_basic_params()
     ys = np.arange(-1,1,step*y_step)
 
@@ -356,6 +545,25 @@ def calc_inc_field(R_norm, y_step=20):
 # 角度分布から二次元ヒートマップを作成(描画なし)
 # ----------------------------------------
 def make_thph_2dhist(ds_all):
+    """(theta, phi) データから 2D ヒストグラムの DataArray を作成する。
+
+    Parameters
+    ----------
+    ds_all : xr.Dataset
+        変数 "theta" と "phi" を含む Dataset。
+        角度単位は度（deg）前提。
+
+    Returns
+    -------
+    heat_da : xr.DataArray
+        dims=("theta","phi"), name="counts"。
+
+    Notes
+    -----
+    - theta bins: 0..180（1deg刻み）
+    - phi bins: 0..360（1deg刻み）
+    - `make_nc_inc` 出力（rad）をそのまま入れると不整合。
+    """
     # 1) 値を 1 次元にフラット化
     theta_vals = ds_all["theta"].values.ravel()
     phi_vals = ds_all["phi"].values.ravel()
@@ -390,6 +598,7 @@ def make_thph_2dhist(ds_all):
 # ヒートマップをとりあえず描画(保存なし)
 # ----------------------------------------
 def draw_hist2d(heat_da, R2):
+    """2D ヒートマップを表示する（保存はしない）。"""
     plt.figure(figsize=(10, 6))
     heat_da.plot.imshow(x="theta", y="phi", origin="lower", cmap="inferno")
     plt.xlabel("θ (deg)")
@@ -405,6 +614,30 @@ def draw_hist2d(heat_da, R2):
 
 # 入射ベクトルと法線ベクトルから入射角を決定する
 def get_reflection_rate(d, n, e0, e1):
+    """入射ベクトルと法線ベクトルから入射角を求め、Fresnel反射率を返す。
+
+    Parameters
+    ----------
+    d : np.ndarray
+        入射方向ベクトル。
+    n : np.ndarray
+        法線ベクトル（単位ベクトル想定）。
+    e0 : float
+        入射側比誘電率（通常 1.0）。
+    e1 : float
+        透過側比誘電率。
+
+    Returns
+    -------
+    Rtm : float
+        TM モード反射率。
+    Rte : float
+        TE モード反射率。
+    Rave : float
+        平均反射率 (|Rtm|+|Rte|)/2。
+    theta_s : float
+        入射角（rad）。
+    """
     theta_s = np.arccos(np.dot(d,-n)) # 入射角
 
     # 真空から第一層への屈折角   田中M論 式(2.9) スネルの法則
@@ -421,6 +654,19 @@ def get_reflection_rate(d, n, e0, e1):
 
 # 入射角を直接決定する
 def get_reflection_rate_angle(theta_s, e0, e1):
+    """入射角を直接与えて Fresnel 反射率を返す。
+
+    Parameters
+    ----------
+    theta_s : float
+        入射角（rad）。
+    e0, e1 : float
+        比誘電率。
+
+    Returns
+    -------
+    Rtm, Rte, Rave : float
+    """
 
     # 真空から第一層への屈折角   田中M論 式(2.9) スネルの法則
     theta_I =  np.arccos(np.sqrt(1-e0/e1*(np.sin(theta_s))**2))
@@ -435,6 +681,22 @@ def get_reflection_rate_angle(theta_s, e0, e1):
     return Rtm, Rte, Rave
 
 def get_sc_angle(theta_s, R_moon, H_obs):
+    """入射角から探査機が捕捉する角度を計算する。
+
+    Parameters
+    ----------
+    theta_s : float
+        入射角（rad）。
+    R_moon : float
+        天体半径。
+    H_obs : float
+        観測高度。
+
+    Returns
+    -------
+    theta_al : float
+        探査機角（rad）。
+    """
     # 入射角から探査機が捕捉する角度を計算
     theta_al = 2.0*theta_s - np.arcsin(R_moon/(R_moon+H_obs)*(np.arcsin(theta_s)))
 
@@ -442,6 +704,24 @@ def get_sc_angle(theta_s, R_moon, H_obs):
 
 # ref_rays_countの拡張版：反射率計算を追加
 def ref_rays_count_ref(R2, xs, d, Z0, R, y=0.0, print_info=True, reflectance=False, e1=3.0):
+    """ref_rays_count に反射率計算（任意）を追加した拡張版。
+
+    Parameters
+    ----------
+    reflectance : bool|int
+        `1` のとき反射率計算を実行し、amp_arr/alp_arr を返す。
+    e1 : float
+        比誘電率（反射率計算に使用）。
+
+    Returns
+    -------
+    theta_arr_r2, phi_arr_r2, p0s, p2s, p_hits, ref_dirs
+        基本のレイトレーシング結果（角度は deg）。
+    amp_arr : np.ndarray
+        shape (N,3) の [Rtm,Rte,Rave]（reflectance==1 のとき）。
+    alp_arr : np.ndarray
+        探査機角（reflectance==1 のとき）。
+    """
 
     theta_list = []
     phi_list = []
@@ -543,6 +823,21 @@ def ref_rays_count_ref(R2, xs, d, Z0, R, y=0.0, print_info=True, reflectance=Fal
 
 # 衛星の基本情報を取得(月orガニメデ)
 def get_default_param(target):
+    """天体（moon/ganymede）のデフォルト物理パラメータを返す。
+
+    Parameters
+    ----------
+    target : str
+        "moon" または "ganymede"。
+
+    Returns
+    -------
+    e1, e2, H_obs, D_moon, R_moon, e1, e2, tandelta
+
+    Notes
+    -----
+    - 実装通り e1/e2 を重複して返す（呼び出し側がその順で代入している）。
+    """
 
     match target:
         case "moon":
@@ -565,6 +860,7 @@ def get_default_param(target):
 
 # phiについて積分し、thetaについて一次元化する
 def sum_phi(heat_da, phi_min, phi_max):
+    """phi 範囲を切り出して phi 方向に和を取り、theta 1D にする。"""
     heat_phi_0_90 = heat_da.where((heat_da["phi"] >= phi_min) & (heat_da["phi"] <= phi_max), drop=True)
     theta_1d_counts_phi_0_90 = heat_phi_0_90.sum("phi")
     theta_1d_counts_phi_0_90.name = "counts (sum over phi 0-90)"
@@ -583,6 +879,24 @@ def sum_phi(heat_da, phi_min, phi_max):
 # copilotくんに相談して改良版を作成してもらった>>steve_correction_pipeline()
 
 def steve_correction(target, R2, fp_nc, theta_arr_r2, phi_arr_r2, p0s, p2s, p_hits, ref_dirs, amp_arr, alp_arr ,heat_da, *args):
+    """補正（I:立体角, II:反射率, III:垂直方向）をフラグで適用する旧API。
+
+    Parameters
+    ----------
+    args : tuple
+        args[0]==1 -> I を適用
+        args[1]==1 -> II を適用
+        args[2]==1 -> III を適用
+
+    Returns
+    -------
+    fin_da : xr.DataArray
+        補正後の分布。
+
+    Notes
+    -----
+    - args の要素数チェックは無く、不足すると IndexError。
+    """
     n_cor = len(args)
 
     if args[0] == 1:
@@ -611,6 +925,7 @@ def steve_correction(target, R2, fp_nc, theta_arr_r2, phi_arr_r2, p0s, p2s, p_hi
 # ----------------------------------------
 
 def i_the_solid_angle(heat_da):
+    """立体角補正として sin(theta) で割る。"""
     ste_da = heat_da / np.sin(np.radians(heat_da["theta"]))
     ste_da.name = "counts per sinθ"
 
@@ -623,6 +938,7 @@ def i_the_solid_angle(heat_da):
 # ----------------------------------------
 
 def i2_the_solid_angle_field(R2,heat_da):
+    """立体角補正 + 単位面積補正（Rf^2 で割る）を適用する。"""
     Rf = R2 - 0.5 # 球面反射の際の焦点からの距離
     stef_da = heat_da / np.sin(np.radians(heat_da["theta"])) / (Rf ** 2)
     stef_da.name = "counts per sinθ per unit area"
@@ -630,6 +946,7 @@ def i2_the_solid_angle_field(R2,heat_da):
     return stef_da
 
 def i3_the_solid_angle_field_upd(R2,heat_da):
+    """単位面積補正の改良版（θ依存の面積比補正を導入）。"""
     Rf, thf, thr = saf_clear_standard(R2, heat_da)
 
     Rf = xr.DataArray(Rf, coords={"theta": heat_da["theta"]}, dims="theta")
@@ -652,6 +969,13 @@ def i3_the_solid_angle_field_upd(R2,heat_da):
 # ----------------------------------------
 
 def saf_clear_standard(R2,heat_da,f=0.5):
+    """i3 用の内部計算（θごとの補正係数）を作る。
+
+    Returns
+    -------
+    Rfs, thfs, thrs : np.ndarray
+        それぞれ焦点距離、角度幅、面積比補正。
+    """
     thss = heat_da["theta"].values
 
     Rfs, thfs, thrs = np.zeros_like(thss), np.zeros_like(thss), np.zeros_like(thss)
@@ -698,16 +1022,19 @@ def saf_clear_standard(R2,heat_da,f=0.5):
 
 # 入射角tsから探査機角度alphaを計算
 def calc_alpha(ts, H, R):
+    """入射角 ts（deg）から探査機角 alpha（deg）を計算する。"""
     alpha = 2 * np.radians(ts) - np.arcsin(R/(R+H) * np.sin(np.radians(ts)))
     return np.degrees(alpha)
 
 # 目的関数：calc_alpha - alpha_target
 def calc_alpha_opt(ts, H, R, alpha_target):
+    """数値解法用の目的関数: calc_alpha(ts,...) - alpha_target。"""
     alpha = calc_alpha(ts, H, R)
     return alpha - alpha_target
 
 # 探査機角度0.5度から179.5度まで1度刻みで入射角を計算し、netCDF形式で保存
 def make_nc_alpha_ts(hs, fp_nc, fn = "alpha_to_theta_forhist.nc"):
+    """高度配列 hs と alpha に対する入射角テーブルを作成して netCDF 保存する。"""
     match_alpha = np.arange(0.5,180,1)
 
     deriv_theta = np.zeros((len(match_alpha), len(hs)))
@@ -726,6 +1053,7 @@ def make_nc_alpha_ts(hs, fp_nc, fn = "alpha_to_theta_forhist.nc"):
 
 # 探査機角度+高度→入射角のnetCDFデータを読み込み
 def load_nc_alpha_ts(fp_nc, fn = "alpha_to_theta_forhist.nc"):
+    """alpha→theta 変換テーブル（DataArray）を読み込む。"""
     # alpha_to_theta_forhist.ncが存在するかチェック
     if not os.path.exists(fp_nc + fn):
         raise FileNotFoundError(f"{fp_nc}{fn} does not exist")
@@ -737,6 +1065,28 @@ def load_nc_alpha_ts(fp_nc, fn = "alpha_to_theta_forhist.nc"):
 
 # II.を行う
 def ii_the_reflection_rate(target, R2, ste_da, fp_nc, apply_ref="average", fn="alpha_to_theta_forhist_ver2.nc"):
+    """反射率補正を適用する（alpha→theta テーブルを参照）。
+
+    Parameters
+    ----------
+    target : str
+        "moon" or "ganymede"。
+    R2 : float
+        観測半径。R2*1000 をテーブルの H と照合する（実装通り）。
+    ste_da : xr.DataArray
+        入力分布（例: 立体角補正後）。
+    fp_nc : str
+        テーブルが置いてあるディレクトリ。
+    apply_ref : str
+        "average" | "TE" | "TM"。
+    fn : str
+        変換テーブルのファイル名。
+
+    Returns
+    -------
+    ste_da_ref : xr.DataArray
+        反射率を乗じた分布。
+    """
 
     R2_for = R2 * 1000 # alpha to thetaの変換で用いるRはなぜか1000倍しており、慣例化している
 
@@ -794,6 +1144,12 @@ def ii_the_reflection_rate(target, R2, ste_da, fp_nc, apply_ref="average", fn="a
 # ----------------------------------------
 
 def iii_the_vertical_direction(p2s, ref_dirs, theta_arr_r2, ste_da_ref):
+    """垂直方向補正として、cos を θビン平均して割り戻す。
+
+    Notes
+    -----
+    - 実装通り `ve_da.fillna(0)` は代入していないため NaN が残る可能性あり。
+    """
     p2s_norm = np.array(np.linalg.norm(p2s, axis=1))
     p2s_norm_true = np.full(len(p2s), p2s_norm[0])
     ths = 1e-6
@@ -923,6 +1279,7 @@ def steve_correction_pipeline(heat_da, params, corrections, print_info=True):
 # ----------------------------------------
 
 def i_the_solid_angle_adapted(data_da, params):
+    """立体角補正（パイプライン対応ラッパー）。"""
     """
     立体角補正（パイプライン対応版）
     
@@ -931,6 +1288,7 @@ def i_the_solid_angle_adapted(data_da, params):
     return i_the_solid_angle(data_da)
 
 def i2_the_solid_angle_field_adapted(data_da, params):
+    """単位面積あたりの立体角補正（パイプライン対応ラッパー）。"""
     """
     単位面積あたりの立体角補正（パイプライン対応版）
     
@@ -939,10 +1297,12 @@ def i2_the_solid_angle_field_adapted(data_da, params):
     return i2_the_solid_angle_field(params["R2"], data_da)
 
 def i3_the_solid_angle_field_upd_adapted(data_da, params):
+    """単位面積あたり補正（改良版）のパイプライン対応ラッパー。"""
 
     return i3_the_solid_angle_field_upd(params["R2"], data_da)
 
 def ii_the_reflection_rate_adapted(data_da, params, apply_ref="average", fn="alpha_to_theta_forhist_ver2.nc"):
+    """反射率補正（パイプライン対応ラッパー）。"""
     """
     反射率補正（パイプライン対応版）
     
@@ -959,6 +1319,7 @@ def ii_the_reflection_rate_adapted(data_da, params, apply_ref="average", fn="alp
 
 
 def iii_the_vertical_direction_adapted(data_da, params):
+    """垂直方向補正（パイプライン対応ラッパー）。"""
     """
     垂直方向補正（パイプライン対応版）
     
