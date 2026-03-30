@@ -412,7 +412,7 @@ def make_nc_sphere(R2, step, xs, d, Z0, fp_nc):
             ds_all = xr.concat([ds_all, ds], dim="y", join="outer")
 
     if len(str(make_R2)) > 4:
-        make_R2_r = make_R2.round(3)
+        make_R2_r = round(make_R2, 3)
     else:
         make_R2_r = make_R2
 
@@ -474,6 +474,9 @@ def load_nc_sphere(R2, fp_nc):
     ds_all : xr.Dataset
     """
     # read_r2 = 1.2 or 2 or 5 or 10 or 1000000
+
+    if len(str(R2)) > 4:
+        R2 = round(R2, 3)
 
     # reflected_rays_R2_{R2}.ncが存在するかチェック
     if not os.path.exists(fp_nc + f"reflected_rays_R2_{R2}.nc"):
@@ -837,6 +840,7 @@ def get_default_param(target):
     Notes
     -----
     - 実装通り e1/e2 を重複して返す（呼び出し側がその順で代入している）。
+    - 2026/3/30に修正。
     """
 
     match target:
@@ -856,7 +860,7 @@ def get_default_param(target):
             e2 = 87.0           # 第二層の比誘電率
             tandelta = 0.0      # 第一層の損失角
     
-    return e1, e2, H_obs, D_moon, R_moon, e1, e2, tandelta
+    return e1, e2, H_obs, D_moon, R_moon, tandelta
 
 # phiについて積分し、thetaについて一次元化する
 def sum_phi(heat_da, phi_min, phi_max):
