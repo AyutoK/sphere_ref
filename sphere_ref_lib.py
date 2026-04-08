@@ -366,7 +366,7 @@ def set_output_dir_nc(out_nc="./nc_underground/"):
         os.makedirs(fp_nc)
     return fp_nc
 
-def make_nc_sphere(R2, step, xs, d, Z0, fp_nc):
+def make_nc_sphere(R2, step, xs, d, Z0, fp_nc, square=False):
     """反射角分布を y 走査しながら計算し、netCDF として保存する。
 
     Parameters
@@ -379,6 +379,9 @@ def make_nc_sphere(R2, step, xs, d, Z0, fp_nc):
         レイトレーシングのパラメータ。
     fp_nc : str
         出力ディレクトリ。
+    square : bool, default False
+        True のとき y を "0"..1 の範囲で x と同じ密度で細かく走査する。
+        False のとき y を -1..1 の範囲で粗く走査する。
 
     Outputs
     -------
@@ -390,7 +393,10 @@ def make_nc_sphere(R2, step, xs, d, Z0, fp_nc):
     - x 重複がありうるため concat(join="outer") の挙動に注意。
     """
 
-    y_array = np.arange(-1,1,step*20)
+    if square:
+        y_array = np.arange(step/2,1+step/2,step)
+    else:
+        y_array = np.arange(-1,1,step*20)
     make_R2 = R2
 
     for y in tqdm.tqdm(y_array):
@@ -416,7 +422,12 @@ def make_nc_sphere(R2, step, xs, d, Z0, fp_nc):
     else:
         make_R2_r = make_R2
 
-    ds_all.to_netcdf(fp_nc + f"reflected_rays_R2_{make_R2_r}.nc")
+    if square:
+        fn = f"reflected_rays_R2_{make_R2_r}_square.nc"
+    else:
+        fn = f"reflected_rays_R2_{make_R2_r}.nc"
+
+    ds_all.to_netcdf(fp_nc + fn)
 
 # ----------------------------------------
 # 入射波強度を計算 ref_rays_countを流用 ※考え方が違いそう
@@ -461,7 +472,7 @@ def make_nc_inc(R2, step, xs, d, Z0, fp_nc):
 # ----------------------------------------
 # netCDFファイルを読み込み(角度情報)
 # ----------------------------------------
-def load_nc_sphere(R2, fp_nc):
+def load_nc_sphere(R2, fp_nc, square=False):
     """反射角分布 netCDF（reflected_rays_R2_{R2}.nc）を読み込む。
 
     Raises
@@ -478,12 +489,16 @@ def load_nc_sphere(R2, fp_nc):
     if len(str(R2)) > 4:
         R2 = round(R2, 3)
 
-    # reflected_rays_R2_{R2}.ncが存在するかチェック
-    if not os.path.exists(fp_nc + f"reflected_rays_R2_{R2}.nc"):
-        raise FileNotFoundError(f"{fp_nc}reflected_rays_R2_{R2}.nc does not exist")
+    if square:
+        expected_fn = f"reflected_rays_R2_{R2}_square.nc"
     else:
-        ds_all = xr.open_dataset(fp_nc + f"reflected_rays_R2_{R2}.nc")
-        print(f"reflected_rays_R2_{R2}.nc loaded correctly.")
+        expected_fn = f"reflected_rays_R2_{R2}.nc"
+    # reflected_rays_R2_{R2}.ncが存在するかチェック
+    if not os.path.exists(fp_nc + expected_fn):
+        raise FileNotFoundError(expected_fn + "does not exist")
+    else:
+        ds_all = xr.open_dataset(fp_nc + expected_fn)
+        print(expected_fn + "loaded correctly.")
 
     return ds_all
 
