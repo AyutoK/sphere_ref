@@ -4,20 +4,23 @@
 # source:fd_square.ipynb
 
 # 書き始めた日: 2026/04/07
+# 最終更新日: 2026/04/09
 
 import numpy as np
 import pandas as pd
 import sphere_ref_lib as srl
 
-def fd_square_func(R2s, ths):
+def square_func(R2s, ths):
     """
     木星天頂角と探査機の高さから、木星電波の表面反射波の強度を導出
+
     Parameters
     ----------
     R2s : list
         探査機の高さのリスト。単位は木星半径。
     ths : list
         木星天頂角のリスト。単位は度。
+    
     Returns
     -------
     Rfd_power : pandas.DataFrame
