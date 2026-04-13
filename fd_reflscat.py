@@ -44,7 +44,7 @@ ref_p = np.absolute(ref_p)
 
 ref_coords = ["TE", "TM", "Ave"]
 
-dr_p = xr.DataArray(ref_p.T, coords=[ths, height, ref_coords], dims=["alpha", "height", "ref_type"])
+dr_p = xr.DataArray(ref_p.T, coords=[ths, height, ref_coords], dims=["theta_s", "height", "ref_type"])
 
 mapping=[[1,1,1,0,2,2,2],
 		 [1,1,1,0,2,2,2],
@@ -92,4 +92,21 @@ for i in range(len(ref_coords)):
 	)
 	fig.format(suptitle=f"ref_power in ref={ref}")
 
+uplt.show()
+
+#%%
+# stokes parameters
+
+sp_I = dr_p.sel(ref_type="TE") ** 2 + dr_p.sel(ref_type="TM") ** 2 # all electromagnetic wave strength
+sp_Q = dr_p.sel(ref_type="TE") ** 2 - dr_p.sel(ref_type="TM") ** 2
+
+axr = sp_Q / sp_I # All TM : -1, All TE : 1, unpolarized : 0
+
+#%%
+
+fig, ax = uplt.subplots(figsize=(8,5))
+fig.format(suptitle="axis ratio (Q/I)")
+ax.plot(ald, axr, cycle=cycle, label=[f"height={h}km" for h in height], legend="ur")
+ax.format(xlim=(0,140), xlabel="alpha (deg)", ylabel="axis ratio")
+fig.save(fp + "fd_axis_ratio.png")
 uplt.show()
