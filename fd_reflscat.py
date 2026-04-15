@@ -2,8 +2,8 @@
 import numpy as np
 import ultraplot as uplt
 import sphere_ref_lib as srl
-import sphere_variables as sv
-import fd_square_func as fd
+from sphere_ref_lib import sphere_variables as sv
+from sphere_ref_lib import fd_square_func as fd
 import xarray as xr
 
 #%%

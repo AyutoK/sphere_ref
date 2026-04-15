@@ -1352,14 +1352,3 @@ def iii_the_vertical_direction_adapted(data_da, params):
     )
 
 
-# ------------------------------------------------------
-# 以下、fd_square_func.pyのsquare_func()で計算したxarrayを用いた計算
-# ------------------------------------------------------
-
-def axis_ratio(dr_p):
-    sp_I = dr_p.sel(ref_type="TE") ** 2 + dr_p.sel(ref_type="TM") ** 2 # all electromagnetic wave strength
-    sp_Q = dr_p.sel(ref_type="TE") ** 2 - dr_p.sel(ref_type="TM") ** 2
-
-    axr = sp_Q / sp_I # All TM : -1, All TE : 1, unpolarized : 0
-
-    return axr
