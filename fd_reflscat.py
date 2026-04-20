@@ -110,3 +110,34 @@ ax.plot(ald, axr, cycle=cycle, label=[f"height={h}km" for h in height], legend="
 ax.format(xlim=(0,140), xlabel="alpha (deg)", ylabel="axis ratio")
 fig.save(fp + "fd_axis_ratio.png")
 uplt.show()
+
+#%%
+sigmas = [0, 5, 10, 15, 20, 25, 30]
+sigma_coords = xr.DataArray(sigmas, coords=[sigmas], dims=["sigma"])
+
+for sigma in sigmas:
+	Rfd_power_i, ald_i = fd.square_func_scat(R2s, ths, sigma_theta=sigma, sigma_phi=sigma)
+	drs_p_i = xr.Dataset(
+		{
+		"Rfd_power" :(("height", "theta_s"), Rfd_power_i.T.values),
+		"alpha" : (("height", "theta_s"), ald_i.T.values),
+		},
+		coords={
+			"theta_s": ths,
+			"height": height,
+			"sigma": sigma,
+		},)
+	drs_p = drs_p_i if sigma == sigmas[0] else xr.concat([drs_p, drs_p_i], dim="sigma", join="outer")
+
+drs_p["Rfd_power"].T.sel(height=100)
+
+#%%
+fig, ax = uplt.subplots(figsize=(8,5))
+fig.format(suptitle="axis ratio (Q/I)")
+ax.plot(drs_p["alpha"].sel(height=100).T, drs_p["Rfd_power"].sel(height=100).T, cycle=cycle)
+ax.format(xlim=(0,140), ylim=(0,2), xlabel="alpha (deg)", ylabel="axis ratio")
+#fig.save(fp + "fd_axis_ratio.png")
+uplt.show()
+
+#%%
+drs_p["alpha"].sel(height=100).T

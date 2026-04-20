@@ -55,3 +55,58 @@ def square_func(R2s, ths):
     Rfd_power = gt * gp
 
     return Rfd_power, ald
+
+def square_func_scat(R2s, ths, sigma_theta, sigma_phi):
+    """
+    (散乱効果を考慮)
+    木星天頂角と探査機の高さから、木星電波の表面反射波の強度を導出
+
+    Parameters
+    ----------
+    R2s : list
+        探査機の高さのリスト。単位は木星半径。
+    ths : list
+        木星天頂角のリスト。単位は度。
+    sigma_theta : float
+        散乱の効果の度合い。反射角のブレる幅を指定。（theta方向）。単位は度。
+    sigma_phi : float
+        散乱の効果の度合い。反射角のブレる幅を指定。（phi方向）。単位は度。
+
+    Returns
+    -------
+    Rfd_power : pandas.DataFrame
+        木星電波の表面反射波強度の直達波に対する比。行が木星天頂角、列が探査機の高さに対応。
+    ald : pandas.DataFrame
+        木星天頂角と探査機の高さから算出される探査機角度αの値。行が木星天頂角、列が探査機の高さに対応。
+    """
+
+    ths_rad = np.radians(ths)
+    Rax, thax = np.meshgrid(R2s, ths_rad)
+
+    alpha_deg = srl.calc_alpha(np.degrees(thax),(Rax-1),1)
+    ald = pd.DataFrame(alpha_deg, index=ths, columns=["R=" + str(x)  for x in R2s])
+    alpha_rad = np.radians(alpha_deg)
+
+    focus_p = 1/2 * np.cos(thax)
+    focus_p2 = 1/(2 * np.cos(thax))
+
+    theta_d = alpha_rad - thax
+
+    L = np.sqrt(Rax ** 2 + 1 ** 2 - 2 * 1 * Rax * np.cos(theta_d))
+
+    Rf = L + focus_p
+    Rg = np.sqrt(focus_p2 ** 2 + 1 ** 2 -2 * focus_p2 * 1 * np.cos(thax))
+
+    Rfd = pd.DataFrame(Rf, index=ths, columns=["R=" + str(x)  for x in R2s])
+    Rfd_norm = focus_p
+
+    H = Rax - 1
+    gt_scat = 2 * H * np.tan(2*thax+sigma_theta) - 2 * L * np.sin(2 * thax)
+    gp_scat = 2 * H * np.tan(2*thax+sigma_phi) - 2 * L * np.sin(2 * thax)
+
+    gt = 1 / (Rfd / Rfd_norm + gt_scat)
+    gp = 1 / ((L + Rg) / Rg + gp_scat)
+
+    Rfd_power = gt * gp
+
+    return Rfd_power, ald
