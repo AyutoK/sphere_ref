@@ -56,10 +56,11 @@ def square_func(R2s, ths):
 
     return Rfd_power, ald
 
-def square_func_scat(R2s, ths, sigma_theta, sigma_phi):
+def square_func_scat(R2s, ths, sigma_theta, sigma_phi, wavelength):
     """
     (散乱効果を考慮)
     木星天頂角と探査機の高さから、木星電波の表面反射波の強度を導出
+    Schroeder et al. (2016)の式を引用
 
     Parameters
     ----------
@@ -102,6 +103,10 @@ def square_func_scat(R2s, ths, sigma_theta, sigma_phi):
 
     gt = Rfd_norm / Rfd
     gp = Rg / (L + Rg)
+
+    # ------------------------------------ #
+    # ここから散乱効果
+    
 
     Rfd_power = gt * gp
 
