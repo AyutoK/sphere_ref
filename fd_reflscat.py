@@ -3,7 +3,6 @@ import numpy as np
 import ultraplot as uplt
 import sphere_ref_lib as srl
 from sphere_ref_lib import sphere_variables as sv
-from sphere_ref_lib import fd_square_func as fd
 import xarray as xr
 
 #%%
@@ -20,7 +19,7 @@ ths = np.arange(0,91,1) #入射角(0-90deg)
 ths_rad = np.radians(ths)
 
 #%%
-Rfd_power, ald = fd.square_func(R2s, ths)
+Rfd_power, ald = srl.fd.square_func(R2s, ths)
 
 #%%
 plot_colors = ["red", "darkorange", "springgreen", "mediumblue", "fuchsia"]
@@ -100,23 +99,32 @@ uplt.show()
 sp_I = dr_p.sel(ref_type="TE") ** 2 + dr_p.sel(ref_type="TM") ** 2 # all electromagnetic wave strength
 sp_Q = dr_p.sel(ref_type="TE") ** 2 - dr_p.sel(ref_type="TM") ** 2
 
-axr = sp_Q / sp_I # All TM : -1, All TE : 1, unpolarized : 0
+axr_pre = sp_Q / sp_I # All TM : -1, All TE : 1, unpolarized : 0
+
+#%%
+axr = dr_p.sel(ref_type="TM") / dr_p.sel(ref_type="TE")
+
+docp = 2 * axr / (axr **2 + 1)
 
 #%%
 
 fig, ax = uplt.subplots(figsize=(8,5))
-fig.format(suptitle="axis ratio (Q/I)")
+fig.format(suptitle="DOCP")
 ax.plot(ald, axr, cycle=cycle, label=[f"height={h}km" for h in height], legend="ur")
-ax.format(xlim=(0,140), xlabel="alpha (deg)", ylabel="axis ratio")
-fig.save(fp + "fd_axis_ratio.png")
+ax.format(xlim=(0,140), xlabel="alpha (deg)", ylabel="DOCP")
+fig.save(fp + "fd_docp.png")
 uplt.show()
 
 #%%
+
+# ------------------------------------------------------ #
+# 曲面に直接散乱効果を入れようとしたもの 失敗
+
 sigmas = [0, 5, 10, 15, 20, 25, 30]
 sigma_coords = xr.DataArray(sigmas, coords=[sigmas], dims=["sigma"])
 
 for sigma in sigmas:
-	Rfd_power_i, ald_i = fd.square_func_scat(R2s, ths, sigma_theta=sigma, sigma_phi=sigma)
+	Rfd_power_i, ald_i = srl.fd.square_func_scat(R2s, ths, sigma_theta=sigma, sigma_phi=sigma)
 	drs_p_i = xr.Dataset(
 		{
 		"Rfd_power" :(("height", "theta_s"), Rfd_power_i.T.values),
@@ -131,7 +139,6 @@ for sigma in sigmas:
 
 drs_p["Rfd_power"].T.sel(height=100)
 
-#%%
 fig, ax = uplt.subplots(figsize=(8,5))
 fig.format(suptitle="axis ratio (Q/I)")
 ax.plot(drs_p["alpha"].sel(height=100).T, drs_p["Rfd_power"].sel(height=100).T, cycle=cycle)
@@ -139,5 +146,6 @@ ax.format(xlim=(0,140), ylim=(0,2), xlabel="alpha (deg)", ylabel="axis ratio")
 #fig.save(fp + "fd_axis_ratio.png")
 uplt.show()
 
-#%%
 drs_p["alpha"].sel(height=100).T
+
+# ------------------------------------------------------ #

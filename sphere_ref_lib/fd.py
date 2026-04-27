@@ -100,12 +100,8 @@ def square_func_scat(R2s, ths, sigma_theta, sigma_phi):
     Rfd = pd.DataFrame(Rf, index=ths, columns=["R=" + str(x)  for x in R2s])
     Rfd_norm = focus_p
 
-    H = Rax - 1
-    gt_scat = 2 * H * np.tan(2*thax+sigma_theta) - 2 * L * np.sin(2 * thax)
-    gp_scat = 2 * H * np.tan(2*thax+sigma_phi) - 2 * L * np.sin(2 * thax)
-
-    gt = 1 / (Rfd / Rfd_norm + gt_scat)
-    gp = 1 / ((L + Rg) / Rg + gp_scat)
+    gt = Rfd_norm / Rfd
+    gp = Rg / (L + Rg)
 
     Rfd_power = gt * gp
 

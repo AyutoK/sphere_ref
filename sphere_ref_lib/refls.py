@@ -9,9 +9,8 @@ import sphere_ref_lib as srl
 from sphere_ref_lib import fd_square_func as fd
 
 def axis_ratio(dr_p):
-    sp_I = dr_p.sel(ref_type="TE") ** 2 + dr_p.sel(ref_type="TM") ** 2 # all electromagnetic wave strength
-    sp_Q = dr_p.sel(ref_type="TE") ** 2 - dr_p.sel(ref_type="TM") ** 2
+    axr = dr_p.sel(ref_type="TM") / dr_p.sel(ref_type="TE")
 
-    axr = sp_Q / sp_I # All TM : -1, All TE : 1, unpolarized : 0
+    docp = 2 * axr / (axr **2 + 1)
 
-    return axr
+    return axr, docp
