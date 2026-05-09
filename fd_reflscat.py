@@ -160,7 +160,7 @@ sigma_phi_rads = np.array([0, 0.1, 0.2, 0.5, 1, 2, 3])
 sigma_thetas = np.radians(sigma_theta_rads)
 sigma_phis = np.radians(sigma_phi_rads)
 
-lm = 100 # 波長(m) 想定は100MHzの電波
+lm = 1000 # 波長(m) 想定は100MHzの電波
 H = (R2s - 1) * R_moon # 探査機高度(m)
 Hc = height * 1000
 Fc = np.sqrt(Hc / lm) # 散乱効果に関連する数 探査機高度とFresnel半径の比の平方根
@@ -185,15 +185,15 @@ dr2_p
 drs_p = dr2_p * scd
 
 #%%
-view_h = 100
-view_ref = "Ave"
+view_h = 1
+view_ref = "None"
 
 test_sc = drs_p.sel(ref_type=view_ref).sel(height=view_h)
 
 sc_cycle = ["red", "orange", "yellow", "lime", "green", "blue", "purple"]
 
 fig, ax = uplt.subplots(figsize=(8,5))
-fig.format(suptitle=f"reflection power w/ scat effect h={view_h}km ref={view_ref}")
+fig.format(suptitle=f"reflection power w/ scat effect wavelength={lm}m h={view_h}km ref={view_ref}")
 ax.plot(ald.iloc[:,0], test_sc,cycle=sc_cycle, label=[f"sigma={s}deg" for s in sigma_theta_rads], legend="ur")
 #ax.plot(ald, dr_p.sel(ref_type="TM").sel(height=1), cycle=cycle)
 ax.format(xlim=(0,140), ylim=(0,1), xlabel="alpha (deg)", ylabel="reflection power")
