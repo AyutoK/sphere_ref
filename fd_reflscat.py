@@ -122,9 +122,10 @@ uplt.show()
 
 sigmas = [0, 5, 10, 15, 20, 25, 30]
 sigma_coords = xr.DataArray(sigmas, coords=[sigmas], dims=["sigma"])
+lm = 1000 # 波長(m) 想定は100MHzの電波
 
 for sigma in sigmas:
-	Rfd_power_i, ald_i = srl.fd.square_func_scat(R2s, ths, sigma_theta=sigma, sigma_phi=sigma)
+	Rfd_power_i, ald_i = srl.fd.square_func_scat(R2s, ths, sigma_theta=sigma, sigma_phi=sigma, wavelength=lm)
 	drs_p_i = xr.Dataset(
 		{
 		"Rfd_power" :(("height", "theta_s"), Rfd_power_i.T.values),
@@ -185,20 +186,24 @@ dr2_p
 drs_p = dr2_p * scd
 
 #%%
-view_h = 1
+view_h = 00
 view_ref = "None"
 
 test_sc = drs_p.sel(ref_type=view_ref).sel(height=view_h)
 
 sc_cycle = ["red", "orange", "yellow", "lime", "green", "blue", "purple"]
+h_ind = np.where(height == view_h)[0][0]
 
 fig, ax = uplt.subplots(figsize=(8,5))
 fig.format(suptitle=f"reflection power w/ scat effect wavelength={lm}m h={view_h}km ref={view_ref}")
-ax.plot(ald.iloc[:,0], test_sc,cycle=sc_cycle, label=[f"sigma={s}deg" for s in sigma_theta_rads], legend="ur")
+ax.plot(ald.iloc[:,h_ind], test_sc,cycle=sc_cycle, label=[f"sigma={s}deg" for s in sigma_theta_rads], legend="ur")
 #ax.plot(ald, dr_p.sel(ref_type="TM").sel(height=1), cycle=cycle)
 ax.format(xlim=(0,140), ylim=(0,1), xlabel="alpha (deg)", ylabel="reflection power")
 fig.save(fp + f"fd_scat_ref_{view_ref}_{view_h}km.png")
 uplt.show()
+
+#%%
+ald
 
 #%%
 # 散乱位相関数っぽいので畳み込みする処理
