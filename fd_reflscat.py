@@ -119,7 +119,7 @@ uplt.show()
 
 # ------------------------------------------------------ #
 # 曲面に直接散乱効果を入れようとしたもの 失敗
-
+"""
 sigmas = [0, 5, 10, 15, 20, 25, 30]
 sigma_coords = xr.DataArray(sigmas, coords=[sigmas], dims=["sigma"])
 lm = 1000 # 波長(m) 想定は100MHzの電波
@@ -148,7 +148,7 @@ ax.format(xlim=(0,140), ylim=(0,2), xlabel="alpha (deg)", ylabel="axis ratio")
 uplt.show()
 
 drs_p["alpha"].sel(height=100).T
-
+"""
 # ------------------------------------------------------ #
 
 #%%
@@ -161,7 +161,7 @@ sigma_phi_rads = np.array([0, 0.1, 0.2, 0.5, 1, 2, 3])
 sigma_thetas = np.radians(sigma_theta_rads)
 sigma_phis = np.radians(sigma_phi_rads)
 
-lm = 1000 # 波長(m) 想定は100MHzの電波
+lm = 100 # 波長(m) 想定は100MHzの電波
 H = (R2s - 1) * R_moon # 探査機高度(m)
 Hc = height * 1000
 Fc = np.sqrt(Hc / lm) # 散乱効果に関連する数 探査機高度とFresnel半径の比の平方根
@@ -186,7 +186,12 @@ dr2_p
 drs_p = dr2_p * scd
 
 #%%
-view_h = 00
+# 波長とtargetも軸に加えたい(工事中)
+#drs_p["wavelength"] = lm
+
+
+#%%
+view_h = 500
 view_ref = "None"
 
 test_sc = drs_p.sel(ref_type=view_ref).sel(height=view_h)
@@ -195,11 +200,11 @@ sc_cycle = ["red", "orange", "yellow", "lime", "green", "blue", "purple"]
 h_ind = np.where(height == view_h)[0][0]
 
 fig, ax = uplt.subplots(figsize=(8,5))
-fig.format(suptitle=f"reflection power w/ scat effect wavelength={lm}m h={view_h}km ref={view_ref}")
+fig.format(suptitle=f"reflection power w/ scat effect wavelength={lm}m h={view_h}km ref={view_ref} <{target}>")
 ax.plot(ald.iloc[:,h_ind], test_sc,cycle=sc_cycle, label=[f"sigma={s}deg" for s in sigma_theta_rads], legend="ur")
 #ax.plot(ald, dr_p.sel(ref_type="TM").sel(height=1), cycle=cycle)
 ax.format(xlim=(0,140), ylim=(0,1), xlabel="alpha (deg)", ylabel="reflection power")
-fig.save(fp + f"fd_scat_ref_{view_ref}_{view_h}km.png")
+fig.save(fp + f"fd_{target}_scat_ref_{view_ref}_{view_h}km.png")
 uplt.show()
 
 #%%
