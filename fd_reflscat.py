@@ -191,8 +191,9 @@ drs_p = dr2_p * scd
 
 
 #%%
-view_h = 500
-view_ref = "None"
+uplt.rc.update(fontsize=12)
+view_h = 100
+view_ref = "Ave"
 
 test_sc = drs_p.sel(ref_type=view_ref).sel(height=view_h)
 
@@ -203,9 +204,11 @@ fig, ax = uplt.subplots(figsize=(8,5))
 fig.format(suptitle=f"reflection power w/ scat effect wavelength={lm}m h={view_h}km ref={view_ref} <{target}>")
 ax.plot(ald.iloc[:,h_ind], test_sc,cycle=sc_cycle, label=[f"sigma={s}deg" for s in sigma_theta_rads], legend="ur")
 #ax.plot(ald, dr_p.sel(ref_type="TM").sel(height=1), cycle=cycle)
-ax.format(xlim=(0,140), ylim=(0,1), xlabel="alpha (deg)", ylabel="reflection power")
+ax.format(xlim=(0,140), ylim=(0,0.4), xlabel="alpha (deg)", ylabel="reflection power")
 fig.save(fp + f"fd_{target}_scat_ref_{view_ref}_{view_h}km.png")
 uplt.show()
+
+uplt.rc.reset()
 
 #%%
 ald
