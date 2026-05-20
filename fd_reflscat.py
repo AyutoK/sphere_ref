@@ -70,7 +70,7 @@ for i in range(len(height)):
 	)
 
 fig.format(suptitle="ref_power in each height")
-uplt.show()
+#uplt.show()
 
 #%%
 
@@ -91,7 +91,7 @@ for i in range(len(ref_coords)):
 	)
 	fig.format(suptitle=f"ref_power in ref={ref}")
 
-uplt.show()
+#uplt.show()
 
 #%%
 # stokes parameters
@@ -113,7 +113,7 @@ fig.format(suptitle="DOCP")
 ax.plot(ald, axr, cycle=cycle, label=[f"height={h}km" for h in height], legend="ur")
 ax.format(xlim=(0,140), xlabel="alpha (deg)", ylabel="DOCP")
 fig.save(fp + "fd_docp.png")
-uplt.show()
+#uplt.show()
 
 #%%
 
@@ -161,7 +161,10 @@ sigma_phi_rads = np.array([0, 0.1, 0.2, 0.5, 1, 2, 3])
 sigma_thetas = np.radians(sigma_theta_rads)
 sigma_phis = np.radians(sigma_phi_rads)
 
-lm = 100 # 波長(m) 想定は100MHzの電波
+if target=="moon":
+	lm = 1000
+elif target=="ganymede":
+	lm = 100 # 波長(m) 想定は100MHzの電波
 H = (R2s - 1) * R_moon # 探査機高度(m)
 Hc = height * 1000
 Fc = np.sqrt(Hc / lm) # 散乱効果に関連する数 探査機高度とFresnel半径の比の平方根
@@ -211,7 +214,113 @@ uplt.show()
 uplt.rc.reset()
 
 #%%
-ald
+# 高さ2種、散乱角3種、月&ガニメデ両方のtargetでやる
+hmask = [1, 3] # 100kmと500km
+view_hs = height[hmask]
+view_ref = "Ave"
+
+sigmask = [0, 3, 4]
+sigmasked_deg = sigma_theta_rads[sigmask]
+sigmasked = sigma_thetas[sigmask]
+
+sc_cycle = ["red", "orange", "yellow", "lime", "green", "blue", "purple"]
+sc_cycle_masked = np.array(sc_cycle)[sigmask]
+
+hls_cycle = ["-", "--"]
+
+fig, ax = uplt.subplots(figsize=(8,5))
+fig.format(suptitle=f"reflection power w/ scat effect wavelength={lm}m ref={view_ref} <{target}>")
+
+ii = 0
+
+for view_h in view_hs:
+
+	test_sc = drs_p.sel(ref_type=view_ref).sel(height=view_h).sel(sigma_theta=sigmasked)
+
+	h_ind = np.where(height == view_h)[0][0]
+
+	hls = np.array(hls_cycle)[ii]
+
+	ax.plot(ald.iloc[:,h_ind], test_sc,cycle=sc_cycle_masked, ls=hls, label=[f"{view_h}km, sigma={s}deg" for s in sigmasked_deg], legend="ur")
+	#ax.plot(ald, dr_p.sel(ref_type="TM").sel(height=1), cycle=cycle)
+
+	ii += 1
+
+ax.format(xlim=(0,140), ylim=(0,0.4), xlabel="alpha (deg)", ylabel="reflection power")
+fig.save(fp + f"fd_{target}_scat_ref_{view_ref}_variation_h{len(view_hs)}.png")
+uplt.show()
 
 #%%
-# 散乱位相関数っぽいので畳み込みする処理
+# 高度と散乱角で、色と線種を入れ替えた版
+hmask = [1, 3, 4] # 100kmと500km
+view_hs = height[hmask]
+view_ref = "Ave"
+
+sigmask = [0, 3, 4]
+sigmasked_deg = sigma_theta_rads[sigmask]
+sigmasked = sigma_thetas[sigmask]
+
+h_cycle = np.array(plot_colors)[hmask]
+sls_cycle = ["-", "--", ":"]
+
+uplt.rc.update(fontsize=13)
+
+fig, ax = uplt.subplots(figsize=(10, 8))
+fig.format(suptitle=f"reflection power w/ scat effect wavelength={lm}m ref={view_ref} <{target}>")
+
+for ii, view_sigma in enumerate(sigmasked):
+	sls = sls_cycle[ii]
+	view_sigma_deg = sigmasked_deg[ii]
+	test_sc = drs_p.sel(ref_type=view_ref).sel(height=view_hs).sel(sigma_theta=view_sigma)
+	h_ind = hmask
+	ax.plot(
+		ald.iloc[:, h_ind],
+		test_sc,
+		cycle=h_cycle,
+		ls=sls,
+		label=[f"{vh}km, sigma={view_sigma_deg}deg" for vh in view_hs],
+		legend="b",
+		legend_kw={"order": "F"}
+		)
+
+ax.format(xlim=(0, 140), ylim=(0, 0.4), xlabel="alpha (deg)", ylabel="reflection power")
+fig.save(fp + f"fd_{target}_scat_ref_{view_ref}_variation_h{len(view_hs)}_swapped.png")
+uplt.show()
+uplt.rc.reset()
+
+#%% 
+hmask = [1] # 100kmと500km
+view_hs = height[hmask]
+view_ref = "Ave"
+
+sigmask = [0, 3, 4, 5]
+sigmasked_deg = sigma_theta_rads[sigmask]
+sigmasked = sigma_thetas[sigmask]
+
+h_cycle = np.array(plot_colors)[hmask]
+sls_cycle = ["-", "--", "-.", ":"]
+
+uplt.rc.update(fontsize=13)
+
+fig, ax = uplt.subplots(figsize=(10, 8))
+fig.format(suptitle=f"reflection power w/ scat effect wavelength={lm}m ref={view_ref} <{target}>")
+
+for ii, view_sigma in enumerate(sigmasked):
+	sls = sls_cycle[ii]
+	view_sigma_deg = sigmasked_deg[ii]
+	test_sc = drs_p.sel(ref_type=view_ref).sel(height=view_hs).sel(sigma_theta=view_sigma)
+	h_ind = hmask
+	ax.plot(
+		ald.iloc[:, h_ind],
+		test_sc,
+		cycle=h_cycle,
+		ls=sls,
+		label=[f"{vh}km, sigma={view_sigma_deg}deg" for vh in view_hs],
+		legend="b",
+		legend_kw={"order": "F"}
+		)
+
+ax.format(xlim=(0, 140), ylim=(0, 0.4), xlabel="alpha (deg)", ylabel="reflection power")
+fig.save(fp + f"fd_{target}_scat_ref_{view_ref}_variation_h{len(view_hs)}_swapped.png")
+uplt.show()
+uplt.rc.reset()
