@@ -6,6 +6,8 @@ from sphere_ref_lib import sphere_variables as sv
 import xarray as xr
 import pandas as pd
 
+uplt.rc.reset()
+
 #%%
 fp = "./output_refl/"
 fp_nc = srl.set_output_dir_nc()
@@ -15,11 +17,14 @@ e1, e2, H_obs, D_moon, R_moon, tandelta = srl.get_default_param(target)
 height = np.array([1,100,200,500,1000])
 e0 = 1
 
-R2s =( height + (R_moon / 1000) )/ (R_moon/1000) # ganymedeにおいて100km, 200km, 500km, 1000kmを想定
+R2s =( height + (R_moon / 1000) )/ (R_moon/1000) # 100km, 200km, 500km, 1000kmを想定
 ths = np.arange(0,91,1) #入射角(0-90deg)
 ths_rad = np.radians(ths)
 
 Rfd_power, ald = srl.fd.square_func(R2s, ths)
+
+print("current target:", target)
+print("R2s:", R2s)
 
 #%%
 plot_colors = ["red", "darkorange", "springgreen", "mediumblue", "fuchsia"]
@@ -163,7 +168,7 @@ sigma_phis = np.radians(sigma_phi_rads)
 
 if target=="moon":
 	lm = 1000
-elif target=="ganymede":
+elif target=="ganymede" or target=="europa" or target=="calisto":
 	lm = 100 # 波長(m) 想定は100MHzの電波
 H = (R2s - 1) * R_moon # 探査機高度(m)
 Hc = height * 1000
@@ -214,6 +219,7 @@ uplt.show()
 uplt.rc.reset()
 
 #%%
+"""
 # 高さ2種、散乱角3種、月&ガニメデ両方のtargetでやる
 hmask = [1, 3] # 100kmと500km
 view_hs = height[hmask]
@@ -249,7 +255,7 @@ for view_h in view_hs:
 ax.format(xlim=(0,140), ylim=(0,0.4), xlabel="alpha (deg)", ylabel="reflection power")
 fig.save(fp + f"fd_{target}_scat_ref_{view_ref}_variation_h{len(view_hs)}.png")
 uplt.show()
-
+"""
 #%%
 # 高度と散乱角で、色と線種を入れ替えた版
 hmask = [1, 3, 4] # 100kmと500km
