@@ -2,6 +2,7 @@
 /output/
 /output_ver2/
 /output_refl/
+/output_refl2/
 /__pycache__/
 *.pyc
 *.pyo

@@ -9,7 +9,9 @@ import pandas as pd
 uplt.rc.reset()
 
 #%%
-fp = "./output_refl/"
+# まずここを実行---------------------------------------------------- #
+
+fp = "./output_refl2/"
 fp_nc = srl.set_output_dir_nc()
 R, step, xs, d, Z0, _ = srl.set_basic_params()
 _, _, target, apply_ref, _, _ = sv.svv()
@@ -26,10 +28,22 @@ Rfd_power, ald = srl.fd.square_func(R2s, ths)
 print("current target:", target)
 print("R2s:", R2s)
 
-#%%
+rtm, rte, rave = srl.get_reflection_rate_angle(ths_rad, e0, e1)
+
+ref_p = np.array([Rfd_power.T * rte, Rfd_power.T * rtm, Rfd_power.T * rave])
+ref_p = np.absolute(ref_p)
+
+ref_coords = ["TE", "TM", "Ave"]
+
+dr_p = xr.DataArray(ref_p.T, coords=[ths, height, ref_coords], dims=["theta_s", "height", "ref_type"])
+
 plot_colors = ["red", "darkorange", "springgreen", "mediumblue", "fuchsia"]
 
 cycle = uplt.Cycle(plot_colors)
+
+# ----------------------------------------------------------------- #
+
+#%%
 
 fig, ax = uplt.subplots(figsize=(10,6))
 ax.plot(ald, Rfd_power, cycle=cycle, label=[f"height={h}km" for h in height], legend="ur")
@@ -41,14 +55,6 @@ uplt.show()
 ald
 
 #%%
-rtm, rte, rave = srl.get_reflection_rate_angle(ths_rad, e0, e1)
-
-ref_p = np.array([Rfd_power.T * rte, Rfd_power.T * rtm, Rfd_power.T * rave])
-ref_p = np.absolute(ref_p)
-
-ref_coords = ["TE", "TM", "Ave"]
-
-dr_p = xr.DataArray(ref_p.T, coords=[ths, height, ref_coords], dims=["theta_s", "height", "ref_type"])
 
 mapping=[[1,1,1,0,2,2,2],
 		 [1,1,1,0,2,2,2],
@@ -111,50 +117,12 @@ axr = dr_p.sel(ref_type="TM") / dr_p.sel(ref_type="TE")
 
 docp = 2 * axr / (axr **2 + 1)
 
-#%%
-
 fig, ax = uplt.subplots(figsize=(8,5))
 fig.format(suptitle="DOCP")
 ax.plot(ald, axr, cycle=cycle, label=[f"height={h}km" for h in height], legend="ur")
 ax.format(xlim=(0,140), xlabel="alpha (deg)", ylabel="DOCP")
-fig.save(fp + "fd_docp.png")
+#fig.save(fp + "fd_docp.png")
 #uplt.show()
-
-#%%
-
-# ------------------------------------------------------ #
-# 曲面に直接散乱効果を入れようとしたもの 失敗
-"""
-sigmas = [0, 5, 10, 15, 20, 25, 30]
-sigma_coords = xr.DataArray(sigmas, coords=[sigmas], dims=["sigma"])
-lm = 1000 # 波長(m) 想定は100MHzの電波
-
-for sigma in sigmas:
-	Rfd_power_i, ald_i = srl.fd.square_func_scat(R2s, ths, sigma_theta=sigma, sigma_phi=sigma, wavelength=lm)
-	drs_p_i = xr.Dataset(
-		{
-		"Rfd_power" :(("height", "theta_s"), Rfd_power_i.T.values),
-		"alpha" : (("height", "theta_s"), ald_i.T.values),
-		},
-		coords={
-			"theta_s": ths,
-			"height": height,
-			"sigma": sigma,
-		},)
-	drs_p = drs_p_i if sigma == sigmas[0] else xr.concat([drs_p, drs_p_i], dim="sigma", join="outer")
-
-drs_p["Rfd_power"].T.sel(height=100)
-
-fig, ax = uplt.subplots(figsize=(8,5))
-fig.format(suptitle="axis ratio (Q/I)")
-ax.plot(drs_p["alpha"].sel(height=100).T, drs_p["Rfd_power"].sel(height=100).T, cycle=cycle)
-ax.format(xlim=(0,140), ylim=(0,2), xlabel="alpha (deg)", ylabel="axis ratio")
-#fig.save(fp + "fd_axis_ratio.png")
-uplt.show()
-
-drs_p["alpha"].sel(height=100).T
-"""
-# ------------------------------------------------------ #
 
 #%%
 
@@ -194,68 +162,76 @@ dr2_p
 drs_p = dr2_p * scd
 
 #%%
-# 波長とtargetも軸に加えたい(工事中)
-#drs_p["wavelength"] = lm
+drs_p
 
+#%%
+# 波長とtargetも軸に加えたい(工事中)
+# 加えた 2026/7/27
+
+sigma_theta_rads = np.array([0, 0.1, 0.2, 0.5, 1, 2, 3])
+sigma_phi_rads = np.array([0, 0.1, 0.2, 0.5, 1, 2, 3])
+
+sigma_thetas = np.radians(sigma_theta_rads)
+sigma_phis = np.radians(sigma_phi_rads)
+
+tlist = sv.target_list()
+
+Rfdd = xr.DataArray(Rfd_power, coords=[ths, height], dims=["theta_s", "height"])
+Rfdd["ref_type"] = "None"
+
+dr2_p = xr.concat([dr_p,Rfdd], dim="ref_type", join="outer")
+
+for t in tlist:
+
+	if t=="moon":
+		lm = 1000
+	elif t=="ganymede" or t=="europa" or t=="calisto":
+		lm = 100 # 波長(m) 想定は100MHzの電波
+
+	H = (R2s - 1) * R_moon # 探査機高度(m)
+	Hc = height * 1000
+	Fc = np.sqrt(Hc / lm) # 散乱効果に関連する数 探査機高度とFresnel半径の比の平方根
+
+	fax, sithax = np.meshgrid(Fc, sigma_thetas)
+	fap, siphax = np.meshgrid(Fc, sigma_phis)
+
+	st = 1 / (1 + fax * np.tan(sithax))
+	sp = 1 / (1 + fax * np.tan(siphax))
+
+	sce = st * sp
+	scd = xr.DataArray(sce, coords=[sigma_thetas, height], dims=["sigma_theta", "height"])
+
+	drs_p_bc = (dr2_p * scd).expand_dims(target=[t])
+	drs_p_bc = drs_p_bc.assign_coords(wavelength=("target", [lm]))
+
+	drs_p = drs_p_bc if t == tlist[0] else xr.concat([drs_p, drs_p_bc], dim="target", join="outer", coords="minimal")
+
+drs_p
 
 #%%
 uplt.rc.update(fontsize=12)
+
+view_target = "moon"
 view_h = 100
 view_ref = "Ave"
 
-test_sc = drs_p.sel(ref_type=view_ref).sel(height=view_h)
+test_sc = drs_p.sel(target=view_target).sel(ref_type=view_ref).sel(height=view_h)
+
+lm = test_sc.wavelength.values
 
 sc_cycle = ["red", "orange", "yellow", "lime", "green", "blue", "purple"]
 h_ind = np.where(height == view_h)[0][0]
 
 fig, ax = uplt.subplots(figsize=(8,5))
-fig.format(suptitle=f"reflection power w/ scat effect wavelength={lm}m h={view_h}km ref={view_ref} <{target}>")
+fig.format(suptitle=f"reflection power w/ scat effect wavelength={lm}m h={view_h}km ref={view_ref} <{view_target}>")
 ax.plot(ald.iloc[:,h_ind], test_sc,cycle=sc_cycle, label=[f"sigma={s}deg" for s in sigma_theta_rads], legend="ur")
 #ax.plot(ald, dr_p.sel(ref_type="TM").sel(height=1), cycle=cycle)
 ax.format(xlim=(0,140), ylim=(0,0.4), xlabel="alpha (deg)", ylabel="reflection power")
-fig.save(fp + f"fd_{target}_scat_ref_{view_ref}_{view_h}km.png")
+fig.save(fp + f"fd_{view_target}_scat_ref_{view_ref}_{view_h}km.png")
 uplt.show()
 
 uplt.rc.reset()
 
-#%%
-"""
-# 高さ2種、散乱角3種、月&ガニメデ両方のtargetでやる
-hmask = [1, 3] # 100kmと500km
-view_hs = height[hmask]
-view_ref = "Ave"
-
-sigmask = [0, 3, 4]
-sigmasked_deg = sigma_theta_rads[sigmask]
-sigmasked = sigma_thetas[sigmask]
-
-sc_cycle = ["red", "orange", "yellow", "lime", "green", "blue", "purple"]
-sc_cycle_masked = np.array(sc_cycle)[sigmask]
-
-hls_cycle = ["-", "--"]
-
-fig, ax = uplt.subplots(figsize=(8,5))
-fig.format(suptitle=f"reflection power w/ scat effect wavelength={lm}m ref={view_ref} <{target}>")
-
-ii = 0
-
-for view_h in view_hs:
-
-	test_sc = drs_p.sel(ref_type=view_ref).sel(height=view_h).sel(sigma_theta=sigmasked)
-
-	h_ind = np.where(height == view_h)[0][0]
-
-	hls = np.array(hls_cycle)[ii]
-
-	ax.plot(ald.iloc[:,h_ind], test_sc,cycle=sc_cycle_masked, ls=hls, label=[f"{view_h}km, sigma={s}deg" for s in sigmasked_deg], legend="ur")
-	#ax.plot(ald, dr_p.sel(ref_type="TM").sel(height=1), cycle=cycle)
-
-	ii += 1
-
-ax.format(xlim=(0,140), ylim=(0,0.4), xlabel="alpha (deg)", ylabel="reflection power")
-fig.save(fp + f"fd_{target}_scat_ref_{view_ref}_variation_h{len(view_hs)}.png")
-uplt.show()
-"""
 #%%
 # 高度と散乱角で、色と線種を入れ替えた版
 hmask = [1, 3, 4] # 100kmと500km
@@ -272,12 +248,12 @@ sls_cycle = ["-", "--", ":"]
 uplt.rc.update(fontsize=13)
 
 fig, ax = uplt.subplots(figsize=(10, 8))
-fig.format(suptitle=f"reflection power w/ scat effect wavelength={lm}m ref={view_ref} <{target}>")
+fig.format(suptitle=f"reflection power w/ scat effect wavelength={lm}m ref={view_ref} <{view_target}>")
 
 for ii, view_sigma in enumerate(sigmasked):
 	sls = sls_cycle[ii]
 	view_sigma_deg = sigmasked_deg[ii]
-	test_sc = drs_p.sel(ref_type=view_ref).sel(height=view_hs).sel(sigma_theta=view_sigma)
+	test_sc = drs_p.sel(target=view_target).sel(ref_type=view_ref).sel(height=view_hs).sel(sigma_theta=view_sigma)
 	h_ind = hmask
 	ax.plot(
 		ald.iloc[:, h_ind],
@@ -290,7 +266,7 @@ for ii, view_sigma in enumerate(sigmasked):
 		)
 
 ax.format(xlim=(0, 140), ylim=(0, 0.4), xlabel="alpha (deg)", ylabel="reflection power")
-fig.save(fp + f"fd_{target}_scat_ref_{view_ref}_variation_h{len(view_hs)}_swapped.png")
+fig.save(fp + f"fd_{view_target}_scat_ref_{view_ref}_variation_h{len(view_hs)}_swapped.png")
 uplt.show()
 uplt.rc.reset()
 
@@ -309,12 +285,12 @@ sls_cycle = ["-", "--", "-.", ":"]
 uplt.rc.update(fontsize=13)
 
 fig, ax = uplt.subplots(figsize=(10, 8))
-fig.format(suptitle=f"reflection power w/ scat effect wavelength={lm}m ref={view_ref} <{target}>")
+fig.format(suptitle=f"reflection power w/ scat effect wavelength={lm}m ref={view_ref} <{view_target}>")
 
 for ii, view_sigma in enumerate(sigmasked):
 	sls = sls_cycle[ii]
 	view_sigma_deg = sigmasked_deg[ii]
-	test_sc = drs_p.sel(ref_type=view_ref).sel(height=view_hs).sel(sigma_theta=view_sigma)
+	test_sc = drs_p.sel(target=view_target).sel(ref_type=view_ref).sel(height=view_hs).sel(sigma_theta=view_sigma)
 	h_ind = hmask
 	ax.plot(
 		ald.iloc[:, h_ind],
@@ -327,6 +303,6 @@ for ii, view_sigma in enumerate(sigmasked):
 		)
 
 ax.format(xlim=(0, 140), ylim=(0, 0.4), xlabel="alpha (deg)", ylabel="reflection power")
-fig.save(fp + f"fd_{target}_scat_ref_{view_ref}_variation_h{len(view_hs)}_swapped.png")
+fig.save(fp + f"fd_{view_target}_scat_ref_{view_ref}_variation_h{len(view_hs)}_swapped.png")
 uplt.show()
 uplt.rc.reset()

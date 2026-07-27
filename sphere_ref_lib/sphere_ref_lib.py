@@ -633,7 +633,7 @@ def draw_hist2d(heat_da, R2):
 # ----------------------------------------
 
 # 入射ベクトルと法線ベクトルから入射角を決定する
-def get_reflection_rate(d, n, e0, e1):
+def get_reflection_rate_old(d, n, e0, e1):
     """入射ベクトルと法線ベクトルから入射角を求め、Fresnel反射率を返す。
 
     Parameters
@@ -673,7 +673,7 @@ def get_reflection_rate(d, n, e0, e1):
     return Rtm, Rte, Rave, theta_s
 
 # 入射角を直接決定する
-def get_reflection_rate_angle(theta_s, e0, e1):
+def get_reflection_rate_angle_old(theta_s, e0, e1):
     """入射角を直接与えて Fresnel 反射率を返す。
 
     Parameters
@@ -697,6 +697,78 @@ def get_reflection_rate_angle(theta_s, e0, e1):
     Rte = -np.sin(theta_s-theta_I)/np.sin(theta_s+theta_I) # TEモード
 
     Rave = (abs(Rtm) + abs(Rte)) / 2
+
+    return Rtm, Rte, Rave
+
+def get_reflection_rate(d, n, e0, e1):
+    """入射ベクトルと法線ベクトルから入射角を求め、Fresnel反射率を返す。
+
+    Parameters
+    ----------
+    d : np.ndarray
+        入射方向ベクトル。
+    n : np.ndarray
+        法線ベクトル（単位ベクトル想定）。
+    e0 : float
+        入射側比誘電率（通常 1.0）。
+    e1 : float
+        透過側比誘電率。
+
+    Returns
+    -------
+    Rtm : float
+        TM モード反射率。
+    Rte : float
+        TE モード反射率。
+    Rave : float
+        平均反射率 (|Rtm|+|Rte|)/2。
+    theta_s : float
+        入射角（rad）。
+    """
+    theta_s = np.arccos(np.dot(d,-n)) # 入射角
+
+    # 真空から第一層への屈折角   田中M論 式(2.9) スネルの法則
+    theta_I =  np.arccos(np.sqrt(1-e0/e1*(np.sin(theta_s))**2))
+
+
+    # 反射率の計算 (田中M論より)
+    Rtm = np.tan(theta_s-theta_I)/np.tan(theta_s+theta_I) # TMモード
+    Rte = -np.sin(theta_s-theta_I)/np.sin(theta_s+theta_I) # TEモード
+
+    # エネルギー反射率に変換
+    Rtm = Rtm**2
+    Rte = Rte**2
+    Rave = (Rtm + Rte) / 2
+
+    return Rtm, Rte, Rave, theta_s
+
+def get_reflection_rate_angle(theta_s, e0, e1):
+    """入射角を直接与えて Fresnel 反射率を返す。
+
+    Parameters
+    ----------
+    theta_s : float
+        入射角（rad）。
+    e0, e1 : float
+        比誘電率。
+
+    Returns
+    -------
+    Rtm, Rte, Rave : float
+    """
+
+    # 真空から第一層への屈折角   田中M論 式(2.9) スネルの法則
+    theta_I =  np.arccos(np.sqrt(1-e0/e1*(np.sin(theta_s))**2))
+
+
+    # 反射率の計算 (田中M論より)
+    Rtm = np.tan(theta_s-theta_I)/np.tan(theta_s+theta_I) # TMモード
+    Rte = -np.sin(theta_s-theta_I)/np.sin(theta_s+theta_I) # TEモード
+
+    # エネルギー反射率に変換
+    Rtm = Rtm**2
+    Rte = Rte**2
+    Rave = (Rtm + Rte) / 2
 
     return Rtm, Rte, Rave
 
