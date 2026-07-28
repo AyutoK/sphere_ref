@@ -167,6 +167,7 @@ drs_p
 #%%
 # 波長とtargetも軸に加えたい(工事中)
 # 加えた 2026/7/27
+# 不具合発生 修正中 2026/7/28
 
 sigma_theta_rads = np.array([0, 0.1, 0.2, 0.5, 1, 2, 3])
 sigma_phi_rads = np.array([0, 0.1, 0.2, 0.5, 1, 2, 3])
@@ -234,6 +235,7 @@ uplt.rc.reset()
 
 #%%
 # 高度と散乱角で、色と線種を入れ替えた版
+view_target = "ganymede"
 hmask = [1, 3, 4] # 100kmと500km
 view_hs = height[hmask]
 view_ref = "Ave"
