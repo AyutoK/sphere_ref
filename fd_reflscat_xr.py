@@ -51,7 +51,7 @@ for t in tlist:
     Rfdd = xr.DataArray(Rfd_power, coords=[ths, height], dims=["theta_s", "height"])
     Rfdd["ref_type"] = "None"
 
-    dr2_p = xr.concat([dr_p,Rfdd], dim="ref_type", join="outer")
+    dr2_p = xr.concat([dr_p,Rfdd], dim="ref_type", join="outer") #球面による効果+反射率
     
     print("current target:", t)
     print("R2s:", R2s)
@@ -72,10 +72,10 @@ for t in tlist:
     sp = 1 / (1 + fax * np.tan(siphax))
 
     sce = st * sp
-    scd = xr.DataArray(sce, coords=[sigma_thetas, height], dims=["sigma_theta", "height"])
+    scd = xr.DataArray(sce, coords=[sigma_thetas, height], dims=["sigma_theta", "height"]) #散乱による効果
 
-    drs_p_bc = (dr2_p * scd).expand_dims(target=[t])
-    drs_p_bc = drs_p_bc.assign_coords(wavelength=("target", [lm]))
+    drs_p_bc = (dr2_p * scd).expand_dims(target=[t]) #target=tにおける反射波の強度
+    drs_p_bc = drs_p_bc.assign_coords(wavelength=("target", [lm])) #targetごとに波長を保存
 
     drs_p = drs_p_bc if t == tlist[0] else xr.concat([drs_p, drs_p_bc], dim="target", join="outer", coords="minimal")
 
@@ -84,7 +84,7 @@ drs_p
 #%%
 # 高度と散乱角で、色と線種を入れ替えた版
 view_target = "moon"
-hmask = [1,3,4] # 100kmと500km
+hmask = [1,3,4] # [1km,100km,200km,500km,1000km]のうち、どの高度を表示するか
 view_hs = height[hmask]
 view_ref = "Ave"
 
@@ -116,6 +116,14 @@ for ii, view_sigma in enumerate(sigmasked):
 		)
 
 ax.format(xlim=(0, 140), ylim=(0, 0.4), xlabel="alpha (deg)", ylabel="reflection power")
-#fig.save(fp + f"fd_{view_target}_scat_ref_{view_ref}_variation_h{len(view_hs)}_swapped.png")
+fig.save(fp + f"fd_{view_target}_scat_ref_{view_ref}_variation_h{len(view_hs)}_swapped.png")
 uplt.show()
 uplt.rc.reset()
+
+#%%
+Rfdd.values
+
+#%%
+drs_p.sel(target="moon").sel(ref_type="Ave").sel(height=100).sel(sigma_theta=0)
+
+#%%

@@ -701,7 +701,7 @@ def get_reflection_rate_angle_old(theta_s, e0, e1):
     return Rtm, Rte, Rave
 
 def get_reflection_rate(d, n, e0, e1):
-    """入射ベクトルと法線ベクトルから入射角を求め、Fresnel反射率を返す。
+    """入射ベクトルと法線ベクトルから入射角を求め、Fresnel反射率を返す。垂直入射に対応(2026/7/31)。
 
     Parameters
     ----------
@@ -730,20 +730,27 @@ def get_reflection_rate(d, n, e0, e1):
     # 真空から第一層への屈折角   田中M論 式(2.9) スネルの法則
     theta_I =  np.arccos(np.sqrt(1-e0/e1*(np.sin(theta_s))**2))
 
+    # 垂直入射の場合を追加 2026/7/31
+    if np.isclose(theta_s, 0.0):
+        Rtm = np.power((e1 - e0) / (e1 + e0), 2)
+        Rte = np.power((e1 - e0) / (e1 + e0), 2)
+        Rave = Rte
 
-    # 反射率の計算 (田中M論より)
-    Rtm = np.tan(theta_s-theta_I)/np.tan(theta_s+theta_I) # TMモード
-    Rte = -np.sin(theta_s-theta_I)/np.sin(theta_s+theta_I) # TEモード
+    else:
 
-    # エネルギー反射率に変換
-    Rtm = Rtm**2
-    Rte = Rte**2
-    Rave = (Rtm + Rte) / 2
+        # 反射率の計算 (田中M論より)
+        Rtm = np.tan(theta_s-theta_I)/np.tan(theta_s+theta_I) # TMモード
+        Rte = -np.sin(theta_s-theta_I)/np.sin(theta_s+theta_I) # TEモード
+
+        # エネルギー反射率に変換
+        Rtm = Rtm**2
+        Rte = Rte**2
+        Rave = (Rtm + Rte) / 2
 
     return Rtm, Rte, Rave, theta_s
 
 def get_reflection_rate_angle(theta_s, e0, e1):
-    """入射角を直接与えて Fresnel 反射率を返す。
+    """入射角を直接与えて Fresnel 反射率を返す。垂直入射に対応(2026/7/31)。
 
     Parameters
     ----------
@@ -761,9 +768,31 @@ def get_reflection_rate_angle(theta_s, e0, e1):
     theta_I =  np.arccos(np.sqrt(1-e0/e1*(np.sin(theta_s))**2))
 
 
+    # 垂直入射の場合を追加 2026/7/31
+    n0 = np.sqrt(e0)
+    n1 = np.sqrt(e1)
+
+    Rtm_0 = ((n1 - n0) / (n1 + n0))
+    Rte_0 = ((n1 - n0) / (n1 + n0))
+
+    mask = np.where(np.isclose(theta_s, 0.0), False, True)
+
+    if type(theta_s) == np.ndarray:
+        theta_s_m = theta_s[mask]
+        theta_I_m = theta_I[mask]
+    else:
+        theta_s_m = theta_s
+        theta_I_m = theta_I
+
     # 反射率の計算 (田中M論より)
-    Rtm = np.tan(theta_s-theta_I)/np.tan(theta_s+theta_I) # TMモード
-    Rte = -np.sin(theta_s-theta_I)/np.sin(theta_s+theta_I) # TEモード
+    Rtm = np.concatenate([
+        [Rtm_0],
+        np.array(np.tan(theta_s_m-theta_I_m)/np.tan(theta_s_m+theta_I_m)) # TMモード
+    ])
+    Rte = np.concatenate([
+        [Rte_0],
+        np.array(-np.sin(theta_s_m-theta_I_m)/np.sin(theta_s_m+theta_I_m)) # TEモード
+    ])
 
     # エネルギー反射率に変換
     Rtm = Rtm**2
