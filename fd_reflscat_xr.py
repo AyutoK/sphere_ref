@@ -33,6 +33,9 @@ sigma_phis = np.radians(sigma_phi_rads)
 
 tlist = sv.target_list()
 
+# aldが都度上書きされてしまっていたため、targetごとに保存(辞書型)
+aldic = {}
+
 for t in tlist:
     e1, e2, H_obs, D_moon, R_moon, tandelta = srl.get_default_param(t)
     e0 = 1
@@ -40,7 +43,8 @@ for t in tlist:
     R2s = (height + (R_moon / 1000) )/ (R_moon/1000) # 100km, 200km, 500km, 1000kmを想定
 
     Rfd_power, ald = srl.fd.square_func(R2s, ths)
-	
+    aldic[t] = ald # targetをキーとする辞書
+
     rtm, rte, rave = srl.get_reflection_rate_angle(ths_rad, e0, e1)
 
     ref_p = np.array([Rfd_power.T * rte, Rfd_power.T * rtm, Rfd_power.T * rave])
@@ -83,7 +87,7 @@ drs_p
 
 #%%
 # 高度と散乱角で、色と線種を入れ替えた版
-view_target = "moon"
+view_target = "ganymede"
 hmask = [1,3,4] # [1km,100km,200km,500km,1000km]のうち、どの高度を表示するか
 view_hs = height[hmask]
 view_ref = "Ave"
@@ -106,7 +110,7 @@ for ii, view_sigma in enumerate(sigmasked):
 	test_sc = drs_p.sel(target=view_target).sel(ref_type=view_ref).sel(height=view_hs).sel(sigma_theta=view_sigma)
 	h_ind = hmask
 	ax.plot(
-		ald.iloc[:, h_ind],
+		aldic[view_target].iloc[:, h_ind],
 		test_sc,
 		cycle=h_cycle,
 		ls=sls,
