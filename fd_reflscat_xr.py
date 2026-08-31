@@ -87,10 +87,10 @@ drs_p
 
 #%%
 # 高度と散乱角で、色と線種を入れ替えた版
-view_target = "ganymede"
-hmask = [1,3,4] # [1km,100km,200km,500km,1000km]のうち、どの高度を表示するか
+view_target = "moon"
+hmask = [1] # [1km,100km,200km,500km,1000km]のうち、どの高度を表示するか
 view_hs = height[hmask]
-view_ref = "Ave"
+view_ref = "TM"
 
 sigmask = [0, 3, 4]
 sigmasked_deg = sigma_theta_rads[sigmask]
@@ -100,6 +100,8 @@ h_cycle = np.array(plot_colors)[hmask]
 sls_cycle = ["-", "--", ":"]
 
 uplt.rc.update(fontsize=13)
+
+lm = drs_p.sel(target=view_target).wavelength.values
 
 fig, ax = uplt.subplots(figsize=(10, 8))
 fig.format(suptitle=f"reflection power w/ scat effect wavelength={lm}m ref={view_ref} <{view_target}>")
