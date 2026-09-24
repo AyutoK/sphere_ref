@@ -87,10 +87,10 @@ drs_p
 
 #%%
 # 高度と散乱角で、色と線種を入れ替えた版
-view_target = "ganymede"
+view_target = "moon"
 hmask = [1, 3, 4] # [1km,100km,200km,500km,1000km]のうち、どの高度を表示するか
 view_hs = height[hmask]
-view_ref = "TE"
+view_ref = "TM"
 
 sigmask = [0, 3, 4]
 sigmasked_deg = sigma_theta_rads[sigmask]
@@ -99,30 +99,38 @@ sigmasked = sigma_thetas[sigmask]
 h_cycle = np.array(plot_colors)[hmask]
 sls_cycle = ["-", "--", ":"]
 
-uplt.rc.update(fontsize=13)
+uplt.rc.update(fontsize=21)
 
 lm = drs_p.sel(target=view_target).wavelength.values
 
-fig, ax = uplt.subplots(figsize=(10, 8))
+fig, ax = uplt.subplots(figsize=(12, 8))
 fig.format(suptitle=f"reflection power w/ scattering effect wavelength={lm}m ref={view_ref} <{view_target}>")
 
 for ii, view_sigma in enumerate(sigmasked):
-	sls = sls_cycle[ii]
-	view_sigma_deg = sigmasked_deg[ii]
-	test_sc = drs_p.sel(target=view_target).sel(ref_type=view_ref).sel(height=view_hs).sel(sigma_theta=view_sigma)
-	h_ind = hmask
-	ax.plot(
-		aldic[view_target].iloc[:, h_ind],
-		test_sc,
-		cycle=h_cycle,
-		ls=sls,
-		label=[f"{vh}km, sigma={view_sigma_deg}deg" for vh in view_hs],
-		legend="b",
-		legend_kw={"order": "F"}
-		)
+    sls = sls_cycle[ii]
+    view_sigma_deg = sigmasked_deg[ii]
+    test_sc = drs_p.sel(target=view_target).sel(ref_type=view_ref).sel(height=view_hs).sel(sigma_theta=view_sigma)
+    h_ind = hmask
+    if ii == 0:
+        ax.plot(
+            aldic[view_target].iloc[:, h_ind],
+            test_sc,
+            cycle=h_cycle,
+            ls=sls,
+            #label=[f"{vh}km" for vh in view_hs],
+            #legend="ur",
+            #legend_kw={"order": "F"}
+            )
+    else:
+        ax.plot(
+            aldic[view_target].iloc[:, h_ind],
+            test_sc,
+            cycle=h_cycle,
+            ls=sls
+            )
 
 ax.format(xlim=(0, 140), ylim=(0, 0.3), xlabel="alpha (deg)", ylabel="reflected power / incident power")
-fig.save(fp + f"fd_{view_target}_scat_ref_{view_ref}_variation_h{len(view_hs)}_swapped.png")
+fig.save(fp + f"fd_{view_target}_scat_ref_{view_ref}_variation_h{len(view_hs)}_swapped_v2.png")
 uplt.show()
 uplt.rc.reset()
 
