@@ -1,5 +1,6 @@
 # fd_reflscat.pyのxarray作成コードを取り出して改良したもの
 # 実装でき次第関数化してsrl.reflsに移す予定
+# 移行仮完了2026/9/29
 
 #%%
 import numpy as np
