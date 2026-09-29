@@ -140,3 +140,56 @@ def draw(fp, view_target, view_ref, height, sigma_theta_rads, sigma_thetas, plot
         fig.save(fp + f"fd_{view_target}_scat_ref_{view_ref}_variation_h{len(view_hs)}_swapped_v2.png")
     uplt.show()
     uplt.rc.reset()
+
+"""
+月:誘電率3と6の比較用
+"""
+def draw_dual(fp, view_targets, view_ref, height, sigma_theta_rads, sigma_thetas, plot_colors, hmask, sigmask, drs_p, aldic, save_img=False):
+
+    view_hs = height[hmask]
+
+    sigmasked_deg = sigma_theta_rads[sigmask]
+    sigmasked = sigma_thetas[sigmask]
+
+    h_cycle = np.array(plot_colors)[hmask]
+    h_cycle2 = np.array(["darkorange"])
+
+    sls_cycle = ["-", "--", ":"]
+
+    uplt.rc.update(fontsize=22)
+
+    fig, ax = uplt.subplots(figsize=(16, 12))
+    fig.format(suptitle=f"reflection power w/ scattering effect wavelength=1000m ref={view_ref} <moon ε=3 and 6>")
+
+    for view_target in view_targets:
+
+        lm = drs_p.sel(target=view_target).wavelength.values
+
+        for ii, view_sigma in enumerate(sigmasked):
+            sls = sls_cycle[ii]
+            view_sigma_deg = sigmasked_deg[ii]
+            test_sc = drs_p.sel(target=view_target).sel(ref_type=view_ref).sel(height=view_hs).sel(sigma_theta=view_sigma)
+            h_ind = hmask
+            if ii == 0:
+                ax.plot(
+                    aldic[view_target].iloc[:, h_ind],
+                    test_sc,
+                    c="limegreen" if view_target=="moon" else "darkorchid",
+                    ls=sls,
+                    label="ε=3" if view_target=="moon3" else "ε=6",
+                    legend="ur",
+                    legend_kw={"order": "F"}
+                    )
+            else:
+                ax.plot(
+                    aldic[view_target].iloc[:, h_ind],
+                    test_sc,
+                    c="limegreen" if view_target=="moon" else "darkorchid",
+                    ls=sls
+                    )
+
+    ax.format(xlim=(0, 140), ylim=(0, 0.3), xlabel="alpha (deg)", ylabel="reflected power / incident power")
+    if save_img:
+        fig.save(fp + f"fd_{view_target}_scat_ref_{view_ref}_variation_h{len(view_hs)}_tg{len(view_targets)}_swapped_v2.png")
+    uplt.show()
+    uplt.rc.reset()
