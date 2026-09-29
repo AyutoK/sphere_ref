@@ -95,7 +95,7 @@ def calc(tlist, height, ref_coords, sigma_thetas, sigma_phis):
 
     return drs_p, aldic
 
-def draw(fp, view_target, view_ref, height, sigma_theta_rads, sigma_thetas, plot_colors, hmask, sigmask, drs_p, aldic, save_img=False):
+def draw(fp: str, view_target: str, view_ref: str, height: list, sigma_theta_rads: list, sigma_thetas: list, plot_colors: list, hmask: list, sigmask: list, drs_p: xr.Dataset, aldic: dict, save_img=False):
 
     view_hs = height[hmask]
 
@@ -144,7 +144,7 @@ def draw(fp, view_target, view_ref, height, sigma_theta_rads, sigma_thetas, plot
 """
 月:誘電率3と6の比較用
 """
-def draw_dual(fp, view_targets, view_ref, height, sigma_theta_rads, sigma_thetas, plot_colors, hmask, sigmask, drs_p, aldic, save_img=False):
+def draw_dual(fp: str, view_targets: list, view_ref: str, height: list, sigma_theta_rads: list, sigma_thetas: list, plot_colors: list, hmask: list, sigmask: list, drs_p: xr.Dataset, aldic: dict, save_img=False):
 
     view_hs = height[hmask]
 
