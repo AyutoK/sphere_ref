@@ -95,7 +95,7 @@ def calc(tlist, height, ref_coords, sigma_thetas, sigma_phis):
 
     return drs_p, aldic
 
-def draw(fp: str, view_target: str, view_ref: str, height: list, sigma_theta_rads: list, sigma_thetas: list, plot_colors: list, hmask: list, sigmask: list, drs_p: xr.Dataset, aldic: dict, save_img=False):
+def draw(fp: str, view_target: str, view_ref: str, height: list, sigma_theta_rads: list, sigma_thetas: list, plot_colors: list, hmask: list, sigmask: list, drs_p: xr.Dataset, aldic: dict, save_img=False, fn=""):
 
     view_hs = height[hmask]
 
@@ -137,14 +137,14 @@ def draw(fp: str, view_target: str, view_ref: str, height: list, sigma_theta_rad
 
     ax.format(xlim=(0, 140), ylim=(0, 0.3), xlabel="alpha (deg)", ylabel="reflected power / incident power")
     if save_img:
-        fig.save(fp + f"fd_{view_target}_scat_ref_{view_ref}_variation_h{len(view_hs)}_swapped_v2.png")
+        fig.save(fp + f"{fn}.png")
     uplt.show()
     uplt.rc.reset()
 
 """
 月:誘電率3と6の比較用
 """
-def draw_dual(fp: str, view_targets: list, view_ref: str, height: list, sigma_theta_rads: list, sigma_thetas: list, plot_colors: list, hmask: list, sigmask: list, drs_p: xr.Dataset, aldic: dict, save_img=False):
+def draw_dual(fp: str, view_targets: list, view_ref: str, height: list, sigma_theta_rads: list, sigma_thetas: list, plot_colors: list, hmask: list, sigmask: list, drs_p: xr.Dataset, aldic: dict, save_img=False, fn=""):
 
     view_hs = height[hmask]
 
@@ -190,6 +190,6 @@ def draw_dual(fp: str, view_targets: list, view_ref: str, height: list, sigma_th
 
     ax.format(xlim=(0, 140), ylim=(0, 0.3), xlabel="alpha (deg)", ylabel="reflected power / incident power")
     if save_img:
-        fig.save(fp + f"fd_{view_target}_scat_ref_{view_ref}_variation_h{len(view_hs)}_tg{len(view_targets)}_swapped_v2.png")
+        fig.save(fp + f"{fn}.png")
     uplt.show()
     uplt.rc.reset()
