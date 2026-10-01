@@ -31,3 +31,15 @@ view_targets = ["moon3", "moon"]
 fn = f"fd_{view_target}_scat_ref_{view_ref}_tg{len(view_targets)}_scat012_swapped_v2"
 
 srl.refls.draw_dual(fp, view_targets, view_ref, height, sigma_theta_rads, sigma_thetas, plot_colors, hmask, sigmask, drs_p, aldic, save_img=True, fn=fn)
+
+#%%
+# ray tracingの図をもう一回作る(カラーバー付き)
+
+import sphere_ref_lib as srl
+
+R, step, xs, d, Z0, R2 = srl.set_basic_params()
+R2 = 2.0
+
+theta_arr_r2, phi_arr_r2, p0s, p2s, p_hits, ref_dirs = srl.ref_rays_count(R2, xs, d, Z0, R=1.0, y=0.0, print_info=False, inc_on=False)
+
+srl.plot_rays_hist_2d_cbar(R2, xs, d, Z0, 3.0, 2.0, True, fp="output/", R=1, save_img_rays=True)

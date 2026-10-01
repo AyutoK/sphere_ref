@@ -358,6 +358,153 @@ def plot_rays_hist_2d(R2s, xs, d, Z0, p0s, p2s, p_hits, ref_dirs, fp, R=1.0):
     plt.savefig(fp + f"theta_hist_Rmix.png")
     plt.show()
 
+# ver up (2026/10/1) 描画範囲を指定できるようにする&カラーバーの表示&R2sがfloatでも対応
+# 描画の順番を変更して引数を削減 (ray tracing計算も同時に行う)
+
+def plot_rays_hist_2d_cbar(R2s, xs, d, Z0, xm, ym, cbar, fp, R=1.0, save_img_hist=False, save_img_rays=False):
+    """光線（x-z断面）と theta 1Dヒストグラムを描画して保存する。
+
+    Parameters
+    ----------
+    R2s : list[float]
+        観測球面半径のリスト。
+    xs, d, Z0, R :
+        レイトレーシングのパラメータ。
+    xm, ym : float
+        描画範囲の x, y の最大値。(衛星半径単位)
+    cbar : bool
+        カラーバーを表示するかどうか。
+    fp : str
+        保存先ディレクトリ（末尾 "/" 推奨）。
+    save_img_hist : bool
+        True のときヒストグラムを保存する。
+    save_img_rays : bool
+        True のとき光線図を保存する。
+
+    Outputs
+    -------
+    - inc_ref_rays_Rmix.png
+    - theta_hist_Rmix.png
+
+    Notes
+    -----
+    - 実装通り `ic` の計算が `p_hits` 長に依存するため、
+      `p_hits` と `xs` の対応が崩れるケース（inc_on 等）では注意。
+    """
+    # ------------------------------------------------------
+    # 描画の準備
+    # ------------------------------------------------------
+
+    # R2がlistでない(floatなど)場合はlistに変換
+    if not isinstance(R2s, list):
+        R2s = [R2s]
+    
+    # カラーマップ
+    cmap_in = plt.get_cmap("cool")
+    cmap_ref = plt.get_cmap("cool")
+
+    cmap_hist = plt.get_cmap("winter")
+
+    # ------------------------------------------------------
+    # 描画2:角度分布
+    # ------------------------------------------------------
+
+    fig, ax = plt.subplots(2,2, figsize=(20,12))
+
+    i = 0
+    
+    for R2 in R2s:
+        theta_arr_r2, phi_arr_r2, p0s, p2s, p_hits, ref_dirs = ref_rays_count(R2, xs, d, Z0, R)
+        assert abs_check_r2(R2, p2s), f"R2={R2}: 観測点の距離誤差が閾値を超えました。"
+
+        samp = len(theta_arr_r2)
+
+        ax[i//2, i%2].grid()
+        ax[i//2, i%2].set_xticks(np.arange(0,181,10))
+
+        ax[i//2, i%2].set_title(f"Counts 1D histogram (obs radius={R2}) (all rays={samp})")
+        ax[i//2, i%2].set_xlabel("theta (deg)")
+        ax[i//2, i%2].set_ylabel("Counts")
+        n, bins, patches = ax[i//2, i%2].hist(theta_arr_r2, bins=180, color="blue")
+        ax[i//2, i%2].set_xlim(0, 180)
+        for j in range(len(patches)):
+            patches[j].set_facecolor(cmap_hist(bins[j] / 180))
+
+        i += 1
+
+    plt.tight_layout()
+    if save_img_hist:
+        plt.savefig(fp + f"theta_hist_Rmix.png")
+    plt.show()
+
+    # ------------------------------------------------------
+    # 描画1:光線の図示
+    # ------------------------------------------------------
+
+    # ------------------------------------------------------
+    # 描画の準備
+    # ------------------------------------------------------
+
+    fig, ax = plt.subplots(figsize=(12,8))
+
+    plt.rcParams["font.size"] = 18
+
+    # 円（x-z平面）
+    theta = np.linspace(0, 2*np.pi, 400)
+    circle_x = R * np.cos(theta)
+    circle_z = R * np.sin(theta)
+    ax.plot(circle_x, circle_z, 'k', linewidth=1)
+
+    for R2 in R2s:
+        circle_x2 = R2 * np.cos(theta)
+        circle_z2 = R2 * np.sin(theta)
+        ax.plot(circle_x2, circle_z2, 'k', linewidth=1, linestyle="--")
+
+
+    L = 15.0 * R  # 反射線の長さスケール
+    step_plot = max(1, len(xs)//100)  # 多すぎないように間引き
+    for i in range(0, len(xs), step_plot):
+
+        #ic = (i - len(p_hits)//2) / (len(p_hits)//2)
+
+        p0 = p0s[i]
+        p = p_hits[i]
+        r = ref_dirs[i]
+
+        ic = p[0] / R # 入射角の正弦
+
+        # 入射線（p0 -> p）
+        ax.plot([p0[0], p[0]], [p0[2], p[2]], color=cmap_in(int(ic * cmap_in.N)), alpha=0.8, linewidth=0.8)
+        # 反射線（p -> p + L * r）
+        ax.plot([p[0], p[0] + L*r[0]], [p[2], p[2] + L*r[2]], color=cmap_ref(int(ic * cmap_ref.N)), alpha=1, linewidth=0.8)
+
+    ax.set_aspect('equal')
+    ax.set_xlim(0, xm*R)
+    ax.set_ylim(0, ym*R)
+    ax.set_xlabel('x', fontsize=15)
+    ax.set_ylabel('z', fontsize=15)
+    ax.set_title(f'1D (y=0) slice: incident and reflected rays on circle (obs radius={R2s[0]})')
+    ax.grid(True)
+
+    if cbar:
+        ticks = np.linspace(0, 1, 5)
+
+        mappable = plt.cm.ScalarMappable(cmap=cmap_in)
+        mappable.set_clim(0, 1)
+
+        colbar = plt.colorbar(mappable, ax=ax, label='sub-solar angle', ticks=ticks)
+        colbar.set_ticklabels([f"{t * 90:g}" for t in ticks])
+        #plt.colorbar(plt.cm.ScalarMappable(cmap=cmap_ref), ax=ax, label='Reflected Ray Color')
+
+    plt.tick_params(labelsize=15)
+
+    plt.tight_layout()
+    if save_img_rays:
+        plt.savefig(fp + f"inc_ref_rays_cbar_Rmix.png")
+    plt.show()
+
+    plt.rcdefaults()
+
 # ----------------------------------------
 # 球面において反射した角度分布を計算し、netCDF形式で保存
 # ----------------------------------------
