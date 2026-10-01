@@ -70,7 +70,7 @@ def calc(tlist, height, ref_coords, sigma_thetas, sigma_phis):
         print("current target:", t)
         #print("R2s:", R2s)
         
-        if t=="moon":
+        if t=="moon" or t=="moon3":
             lm = 1000
         elif t=="ganymede" or t=="europa" or t=="calisto":
             lm = 100 # 波長(m) 想定は100MHzの電波
@@ -170,13 +170,23 @@ def draw_dual(fp: str, view_targets: list, view_ref: str, height: list, sigma_th
             view_sigma_deg = sigmasked_deg[ii]
             test_sc = drs_p.sel(target=view_target).sel(ref_type=view_ref).sel(height=view_hs).sel(sigma_theta=view_sigma)
             h_ind = hmask
+
+            draw_c = "darkorchid" if view_target=="moon3" else "limegreen"
+
+            dualmoon_flag = (len(view_targets) == 2) and (("moon" in view_targets) and ("moon3" in view_targets))
+
+            if dualmoon_flag:
+                draw_label = "ε=3" if view_target=="moon3" else "ε=6"
+            else:
+                draw_label = f"{view_target}"
+
             if ii == 0:
                 ax.plot(
                     aldic[view_target].iloc[:, h_ind],
                     test_sc,
-                    c="limegreen" if view_target=="moon" else "darkorchid",
+                    c=draw_c,
                     ls=sls,
-                    label="ε=3" if view_target=="moon3" else "ε=6",
+                    label=draw_label,
                     legend="ur",
                     legend_kw={"order": "F"}
                     )
@@ -184,7 +194,7 @@ def draw_dual(fp: str, view_targets: list, view_ref: str, height: list, sigma_th
                 ax.plot(
                     aldic[view_target].iloc[:, h_ind],
                     test_sc,
-                    c="limegreen" if view_target=="moon" else "darkorchid",
+                    c=draw_c,
                     ls=sls
                     )
 
