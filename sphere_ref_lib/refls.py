@@ -103,7 +103,7 @@ def draw(fp: str, view_target: str, view_ref: str, height: list, sigma_theta_rad
     sigmasked = sigma_thetas[sigmask]
 
     h_cycle = np.array(plot_colors)[hmask]
-    sls_cycle = ["-", "--", ":"]
+    sls_cycle = ["-", "--", ":", "-."]
 
     uplt.rc.update(fontsize=21)
 
@@ -154,7 +154,7 @@ def draw_dual(fp: str, view_targets: list, view_ref: str, height: list, sigma_th
     h_cycle = np.array(plot_colors)[hmask]
     h_cycle2 = np.array(["darkorange"])
 
-    sls_cycle = ["-", "--", ":"]
+    sls_cycle = ["-", "--", ":", "-."]
 
     uplt.rc.update(fontsize=22)
 

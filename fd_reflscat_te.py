@@ -14,10 +14,10 @@ drs_p, aldic = srl.refls.calc(tlist, height, ref_coords, sigma_thetas, sigma_phi
 #%%
 
 fp = "./output_refl2/"
-view_target = "moon3" 
-view_ref = "Ave"
+view_target = "moon3"
+view_ref = "TM"
 hmask = [1, 3, 4]
-sigmask = [0, 4, 5]
+sigmask = [0, 4, 5, 6]
 
 fn = f"fd_{view_target}_scat_ref_{view_ref}_h{len(hmask)}_scat012_swapped_v2"
 
