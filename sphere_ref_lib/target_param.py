@@ -45,6 +45,14 @@ def get_default_param(target):
             e2 = 87.0           # 第二層の比誘電率
             tandelta = 0.0      # 第一層の損失角
 
+        case "ganymede2":
+            H_obs = 500e3       # 観測者の高度[m] (JUICE)
+            D_moon = 1*1e3      # 表層から地下構造までのレゴリスリス層(第一層)の厚さ[m]
+            R_moon = 5268000.0/2.0  # ガニメデの半径[m]
+            e1 = 2.0            # 第一層の比誘電率
+            e2 = 87.0           # 第二層の比誘電率
+            tandelta = 0.0      # 第一層の損失角
+
         case "europa":
             H_obs = 500e3       # 観測者の高度[m] (JUICE)
             D_moon = 1*1e3      # 表層から地下構造までのレゴリスリス層(第一層)の厚さ[m]

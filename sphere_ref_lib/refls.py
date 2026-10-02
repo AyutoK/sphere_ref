@@ -72,7 +72,7 @@ def calc(tlist, height, ref_coords, sigma_thetas, sigma_phis):
         
         if t=="moon" or t=="moon3":
             lm = 1000
-        elif t=="ganymede" or t=="europa" or t=="calisto":
+        elif t=="ganymede" or t=="ganymede2" or t=="europa" or t=="calisto":
             lm = 100 # 波長(m) 想定は100MHzの電波
 
         H = (R2s - 1) * R_moon # 探査機高度(m)

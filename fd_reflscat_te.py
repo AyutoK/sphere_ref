@@ -14,8 +14,8 @@ drs_p, aldic = srl.refls.calc(tlist, height, ref_coords, sigma_thetas, sigma_phi
 #%%
 
 fp = "./output_refl2/"
-view_target = "moon3"
-view_ref = "TM"
+view_target = "ganymede2"
+view_ref = "Ave"
 hmask = [1, 3, 4]
 sigmask = [0, 4, 5, 6]
 
