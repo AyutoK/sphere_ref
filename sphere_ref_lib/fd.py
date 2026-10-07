@@ -111,3 +111,24 @@ def square_func_scat(R2s, ths, sigma_theta, sigma_phi, wavelength):
     Rfd_power = gt * gp
 
     return Rfd_power, ald
+
+
+def square_func_rw2015(R2s, ths, ald):
+    h = np.array(R2s) - 1
+
+    R2ax, thax = np.meshgrid(h, np.radians(ths))
+    ald_np = ald.to_numpy()
+    ald_rad = np.radians(ald_np)
+
+    chi = 2 * thax - ald_rad
+
+    r = -np.cos(thax) + np.sqrt(np.cos(thax) ** 2 + (1 + R2ax) ** 2 - 1)
+
+    gth = ((1 - np.cos(thax)) + (1 + 2 * R2ax)) / np.cos(thax)
+    gph = (1 + R2ax) * (np.cos(ald_rad) / np.cos(thax)) * ((np.cos(thax) + r * 2 * np.cos(thax) ** 2) / (np.cos(thax) - r * (1 - 2 * np.cos(thax) ** 2)))
+
+    a2a1 = gth * gph
+
+    aad = pd.DataFrame(a2a1, index=ths, columns=["R=" + str(x)  for x in R2s])
+
+    return aad ** (-1) / np.cos(chi)
