@@ -17,7 +17,7 @@ fp = "./output_refl2/"
 view_target = "ganymede2"
 view_ref = "Ave"
 hmask = [1, 3, 4]
-sigmask = [0, 4, 5, 6]
+sigmask = [0, 4, 5, 7]
 
 fn = f"fd_{view_target}_scat_ref_{view_ref}_h{len(hmask)}_scat012_swapped_v2"
 
@@ -29,7 +29,7 @@ view_ref = "TE"
 
 view_targets = ["moon3", "moon"]
 
-fn = f"fd_mixed_scat_ref_{view_ref}_tg{len(view_targets)}_scat012_swapped_v2"
+fn = f"fd_mixed_scat_ref_{view_ref}_tg{len(view_targets)}_scat0124_swapped_v2"
 
 srl.refls.draw_dual(fp, view_targets, view_ref, height, sigma_theta_rads, sigma_thetas, plot_colors, hmask, sigmask, drs_p, aldic, save_img=True, fn=fn)
 

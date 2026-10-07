@@ -30,8 +30,8 @@ def params():
 
     cycle = uplt.Cycle(plot_colors)
 
-    sigma_theta_rads = np.array([0, 0.1, 0.2, 0.5, 1, 2, 3])
-    sigma_phi_rads = np.array([0, 0.1, 0.2, 0.5, 1, 2, 3])
+    sigma_theta_rads = np.array([0, 0.1, 0.2, 0.5, 1, 2, 3, 4])
+    sigma_phi_rads = np.array([0, 0.1, 0.2, 0.5, 1, 2, 3, 4])
 
     sigma_thetas = np.radians(sigma_theta_rads)
     sigma_phis = np.radians(sigma_phi_rads)

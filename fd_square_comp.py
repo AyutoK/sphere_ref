@@ -24,16 +24,17 @@ a2a1
 uplt.rc.update(fontsize=16)
 
 ymax = 1.0
+ymin = 1e-2
 
 plot_colors = ["red", "darkorange", "springgreen", "mediumblue"]
 cycle = uplt.Cycle(colors=plot_colors)
 
 fig, ax = uplt.subplots(suptitle="Reflected waves power (from radar equation)", xlabel="s/c angle alpha (degree)", ylabel="Ratio to the incident wave", figsize=(10,7))
-ax.format(ylim=(0,ymax), xlim=(0,180), ylocator=ymax/10)
+ax.format(ylim=(ymin,ymax), xlim=(0,180), ylocator=ymax/10, yscale="log")
 ax.plot(ald, rfd_power, cycle=cycle, label=[f"{h}" for h in R2s], ls="--", legend="b", legend_kw={"title": "height"}, linewidth=2)
 ax.plot(ald, a2a1, cycle=cycle, label=[f"{h}" for h in R2s], legend="b", legend_kw={"lw": 8, "ncols": 4, "title": "height"}, linewidth=2)
 
-fig.savefig(fp + "Result_compared_rw2015.png")
+fig.savefig(fp + "Result_compared_rw2015_log.png")
 fig.show()
 
 uplt.rc.reset()
