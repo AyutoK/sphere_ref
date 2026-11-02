@@ -361,7 +361,7 @@ def plot_rays_hist_2d(R2s, xs, d, Z0, p0s, p2s, p_hits, ref_dirs, fp, R=1.0):
 # ver up (2026/10/1) 描画範囲を指定できるようにする&カラーバーの表示&R2sがfloatでも対応
 # 描画の順番を変更して引数を削減 (ray tracing計算も同時に行う)
 
-def plot_rays_hist_2d_cbar(R2s, xs, d, Z0, xm, ym, cbar, fp, R=1.0, save_img_hist=False, save_img_rays=False):
+def plot_rays_hist_2d_cbar(R2s, xs, d, Z0, xm, ym, cbar, fp, R=1.0, save_img_hist=False, save_img_rays=False, xmin=0, ymin=0):
     """光線（x-z断面）と theta 1Dヒストグラムを描画して保存する。
 
     Parameters
@@ -445,7 +445,7 @@ def plot_rays_hist_2d_cbar(R2s, xs, d, Z0, xm, ym, cbar, fp, R=1.0, save_img_his
     # 描画の準備
     # ------------------------------------------------------
 
-    fig, ax = plt.subplots(figsize=(12,8))
+    fig, ax = plt.subplots(figsize=(12,12))
 
     plt.rcParams["font.size"] = 18
 
@@ -479,8 +479,8 @@ def plot_rays_hist_2d_cbar(R2s, xs, d, Z0, xm, ym, cbar, fp, R=1.0, save_img_his
         ax.plot([p[0], p[0] + L*r[0]], [p[2], p[2] + L*r[2]], color=cmap_ref(int(ic * cmap_ref.N)), alpha=1, linewidth=0.8)
 
     ax.set_aspect('equal')
-    ax.set_xlim(0, xm*R)
-    ax.set_ylim(0, ym*R)
+    ax.set_xlim(xmin*R, xm*R)
+    ax.set_ylim(ymin*R, ym*R)
     ax.set_xlabel('x', fontsize=15)
     ax.set_ylabel('z', fontsize=15)
     ax.set_title(f'1D (y=0) slice: incident and reflected rays on circle (obs radius={R2s[0]})')
