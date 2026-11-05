@@ -44,3 +44,17 @@ R2 = 2.0
 theta_arr_r2, phi_arr_r2, p0s, p2s, p_hits, ref_dirs = srl.ref_rays_count(R2, xs, d, Z0, R=1.0, y=0.0, print_info=False, inc_on=False)
 
 srl.plot_rays_hist_2d_cbar(R2, xs, d, Z0, 3.0, 2.0, True, fp="output/", R=1, save_img_rays=True, ymin=-2.0)
+
+#%%
+# DOCPをお試しで出してみる
+axr, docp = srl.pol.docp(drs_p)
+
+dr_docp = docp.sel(sigma_theta=0).sel(target="moon").sel(height=100)
+
+fig, ax = uplt.subplots(suptitle=f"DOCP of moon <sigma=0deg, height=100km>",figsize=(8,5))
+ax.plot(aldic["moon"].iloc[:,1],dr_docp, c="mediumblue")
+ax.format(ylabel="DOCP")
+uplt.show()
+
+#%%
+aldic["moon"].iloc[:,1]
