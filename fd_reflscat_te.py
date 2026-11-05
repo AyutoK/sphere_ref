@@ -14,14 +14,14 @@ drs_p, aldic = srl.refls.calc(tlist, height, ref_coords, sigma_thetas, sigma_phi
 #%%
 
 fp = "./output_refl2/"
-view_target = "ganymede2"
-view_ref = "Ave"
+view_target = "moon"
+view_ref = "TE"
 hmask = [1, 3, 4]
-sigmask = [0, 4, 5, 7]
+sigmask = [0, 4, 5]
 
 fn = f"fd_{view_target}_scat_ref_{view_ref}_h{len(hmask)}_scat012_swapped_v2"
 
-srl.refls.draw(fp, view_target, view_ref, height, sigma_theta_rads, sigma_thetas, plot_colors, hmask, sigmask, drs_p, aldic, save_img=True, fn=fn)
+srl.refls.draw(fp, view_target, view_ref, height, sigma_theta_rads, sigma_thetas, plot_colors, hmask, sigmask, drs_p, aldic, save_img=True, fn=fn, legend=True)
 
 #%%
 hmask = [1]

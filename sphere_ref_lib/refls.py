@@ -95,7 +95,7 @@ def calc(tlist, height, ref_coords, sigma_thetas, sigma_phis):
 
     return drs_p, aldic
 
-def draw(fp: str, view_target: str, view_ref: str, height: list, sigma_theta_rads: list, sigma_thetas: list, plot_colors: list, hmask: list, sigmask: list, drs_p: xr.Dataset, aldic: dict, save_img=False, fn=""):
+def draw(fp: str, view_target: str, view_ref: str, height: list, sigma_theta_rads: list, sigma_thetas: list, plot_colors: list, hmask: list, sigmask: list, drs_p: xr.Dataset, aldic: dict, save_img=False, fn="", legend=False):
 
     view_hs = height[hmask]
 
@@ -112,32 +112,45 @@ def draw(fp: str, view_target: str, view_ref: str, height: list, sigma_theta_rad
     fig, ax = uplt.subplots(figsize=(12, 8))
     fig.format(suptitle=f"reflection power w/ scattering effect wavelength={lm}m ref={view_ref} <{view_target}>")
 
+    leg_handles = []
+    leg_labels = []
+
     for ii, view_sigma in enumerate(sigmasked):
         sls = sls_cycle[ii]
         view_sigma_deg = sigmasked_deg[ii]
         test_sc = drs_p.sel(target=view_target).sel(ref_type=view_ref).sel(height=view_hs).sel(sigma_theta=view_sigma)
         h_ind = hmask
-        if ii == 0:
-            ax.plot(
-                aldic[view_target].iloc[:, h_ind],
-                test_sc,
-                cycle=h_cycle,
-                ls=sls,
-                #label=[f"{vh}km" for vh in view_hs],
-                #legend="ur",
-                #legend_kw={"order": "F"}
-                )
-        else:
-            ax.plot(
-                aldic[view_target].iloc[:, h_ind],
-                test_sc,
-                cycle=h_cycle,
-                ls=sls
-                )
+        hs = ax.plot(
+            aldic[view_target].iloc[:, h_ind].values,
+            test_sc.values,  # xarrayのメタデータから凡例タイトル"height"が自動付与されるのを防ぐ
+            cycle=h_cycle,
+            ls=sls,
+            )
+        leg_handles.extend(hs)
+        leg_labels.extend([f"{vh}km,{view_sigma_deg:.1f}deg" for vh in view_hs])
+
+    if legend:
+        # 高度(色)×sigma(線種)の全組み合わせを図の下側に表示
+        # 列方向に詰めるので、1列がひとつのsigma、1行がひとつの高度になる
+        ax.legend(
+            leg_handles,
+            leg_labels,
+            loc="b",
+            ncols=len(sigmasked),
+            order="F",
+            fontsize=17,  # 本文(21)のままだと9項目が図の幅からはみ出すため小さめに
+            frame=True,
+            framealpha=1,
+            facecolor="white",
+            edgecolor="black",
+            )
+        fn_leg = "_with_legend"
+    else:
+        fn_leg = ""
 
     ax.format(xlim=(0, 140), ylim=(0, 0.3), xlabel="alpha (deg)", ylabel="reflected power / incident power")
     if save_img:
-        fig.save(fp + f"{fn}.png")
+        fig.save(fp + f"{fn}{fn_leg}.png")
     uplt.show()
     uplt.rc.reset()
 
