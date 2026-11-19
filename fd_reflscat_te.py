@@ -49,10 +49,13 @@ srl.plot_rays_hist_2d_cbar(R2, xs, d, Z0, 3.0, 2.0, True, fp="output/", R=1, sav
 # DOCPをお試しで出してみる
 axr, docp = srl.pol.docp(drs_p)
 
-dr_docp = docp.sel(sigma_theta=0).sel(target="moon").sel(height=100)
+hmask = [0, 1, 3, 4]
+view_h = height[hmask]
 
-fig, ax = uplt.subplots(suptitle=f"DOCP of moon <sigma=0deg, height=100km>",figsize=(8,5))
-ax.plot(aldic["moon"].iloc[:,1],dr_docp, c="mediumblue")
+dr_docp = docp.sel(sigma_theta=0).sel(target="moon").sel(height=view_h)
+
+fig, ax = uplt.subplots(suptitle=f"DOCP of reflected moon <sigma=0deg, height=100km>",figsize=(6,4))
+ax.plot(aldic["moon"].iloc[:,hmask],dr_docp, cycle=cycle)
 ax.format(ylabel="DOCP")
 uplt.show()
 

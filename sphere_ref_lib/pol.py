@@ -23,11 +23,13 @@ def docp(dr_p):
     axr : xarray
         軸比。dr_pから偏波種軸がなくなる。
     docp : xarray
-        axrから計算した円偏波度。
+        axrから計算した円偏波度(0~1)。
+        0: 直線偏波
+        1: 円偏波(左右は判別不可)
 
     """
     axr = dr_p.sel(ref_type="TM") / dr_p.sel(ref_type="TE")
 
-    docp = 2 * np.sqrt(axr) / (axr + 1)
+    docp = 2 * axr / (axr**2 + 1)
 
     return axr, docp
